@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../ranking/screens/ranking_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'gestion_paquetes_screen.dart';
 
@@ -19,7 +20,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final pantallas = [const AdminDashboardScreen(), const GestionPaquetesScreen()];
+    final pantallas = [const AdminDashboardScreen(), const GestionPaquetesScreen(), const RankingScreen()];
 
     return Scaffold(
       appBar: AppBar(
@@ -39,6 +40,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Dashboard'),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Paquetes'),
+          NavigationDestination(icon: Icon(Icons.leaderboard), label: 'Ranking'),
         ],
       ),
     );

@@ -7,7 +7,10 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/cliente_provider.dart';
 import '../../../services/cliente_service.dart';
 import '../../../services/sos_service.dart';
+import '../../../services/ubicacion_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
+import 'historial_cliente_screen.dart';
+import '../../ranking/screens/ranking_screen.dart';
 
 /// Home del cliente replicado del diseno de Stitch (MotoRide):
 /// panel "¿A donde vamos?" con linea conectora origen/destino,
@@ -30,9 +33,14 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Carga las motos disponibles cerca (posicion por defecto: Lima centro).
-      context.read<ClienteProvider>().cargarConductores(lat: -12.0464, lng: -77.0428);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Ubicacion real del cliente para ver las motos mas cercanas.
+      final posicion = await UbicacionService.obtenerPosicionActual();
+      final lat = posicion?.latitude ?? -12.0464;
+      final lng = posicion?.longitude ?? -77.0428;
+      if (mounted) {
+        context.read<ClienteProvider>().cargarConductores(lat: lat, lng: lng);
+      }
     });
   }
 
@@ -84,6 +92,20 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
           style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.black),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Ranking',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const RankingScreen()),
+            ),
+            icon: const Icon(Icons.leaderboard, color: AppColors.yellow),
+          ),
+          IconButton(
+            tooltip: 'Mis viajes',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
+            ),
+            icon: const Icon(Icons.history, color: AppColors.yellow),
+          ),
           IconButton(
             tooltip: 'Salir',
             onPressed: () => context.read<AuthProvider>().cerrarSesion(),

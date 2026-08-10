@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/conductor_provider.dart';
+import '../../../services/ubicacion_service.dart';
 import '../widgets/mapa_viajes.dart';
 import 'recarga_screen.dart';
 
@@ -17,13 +19,47 @@ class ConductorHomeScreen extends StatefulWidget {
 }
 
 class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
+  Timer? _pollingTimer;
+  double? _miLat;
+  double? _miLng;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ConductorProvider>().cargarPerfil();
       context.read<ConductorProvider>().cargarPaquetes();
+      _iniciarLoopDeUbicacion();
     });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Modo loop: cada 15s captura la posicion actual, la sube al backend y
+  /// refresca los viajes de su zona (filtro por cercania).
+  Future<void> _iniciarLoopDeUbicacion() async {
+    await _actualizarPosicionYViajes();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _actualizarPosicionYViajes();
+    });
+  }
+
+  Future<void> _actualizarPosicionYViajes() async {
+    final provider = context.read<ConductorProvider>();
+    final posicion = await UbicacionService.obtenerPosicionActual();
+    if (posicion != null) {
+      _miLat = posicion.latitude;
+      _miLng = posicion.longitude;
+      provider.actualizarUbicacion(lat: posicion.latitude, lng: posicion.longitude);
+      provider.cargarViajesDisponibles(lat: posicion.latitude, lng: posicion.longitude, radioKm: 5);
+    } else {
+      // Sin permiso de ubicacion: cae a ver todos (comportamiento previo).
+      provider.cargarViajesDisponibles();
+    }
   }
 
   @override
@@ -31,6 +67,33 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     final provider = context.watch<ConductorProvider>();
     final disponible = provider.perfil?.disponible ?? false;
     final saldo = provider.saldo;
+
+    // Aviso tipo InDrive: llego un viaje nuevo a mi zona.
+    if (provider.hayViajeNuevo && mounted) {
+      final idNuevo = provider.ultimoViajeNuevoId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || idNuevo == null) return;
+        provider.consumirViajeNuevo();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.notifications_active, color: AppColors.yellow),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '¡Nueva carrera en tu zona! (#$idNuevo)',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      });
+    }
 
     return Scaffold(
       backgroundColor: AppColors.gray,
@@ -224,10 +287,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
               SizedBox(
                 height: 44,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    provider.cargarViajesDisponibles();
-                    provider.refrescarSaldo();
-                  },
+                  onPressed: _actualizarPosicionYViajes,
                   icon: const Icon(Icons.refresh, size: 18),
                   label: const Text('Actualizar viajes'),
                 ),

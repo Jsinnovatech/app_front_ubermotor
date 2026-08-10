@@ -3,6 +3,7 @@ import '../core/network/api_client.dart';
 import '../models/conductor_model.dart';
 import '../models/paquete_model.dart';
 import '../models/viaje_model.dart';
+import 'viaje_service.dart';
 
 /// Unico service que sabe de /conductores/* y del saldo/recargas.
 class ConductorService {

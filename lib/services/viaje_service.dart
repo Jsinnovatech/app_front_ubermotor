@@ -4,8 +4,16 @@ import '../models/viaje_model.dart';
 
 /// Unico service que sabe de /viajes/* (estados del ciclo de vida).
 class ViajeService {
-  static Future<List<Viaje>> disponibles() async {
-    final data = await ApiClient.get(ApiConfig.viajesDisponibles) as List;
+  static Future<List<Viaje>> disponibles({
+    double? lat,
+    double? lng,
+    double radioKm = 5,
+  }) async {
+    var url = ApiConfig.viajesDisponibles;
+    if (lat != null && lng != null) {
+      url += '?lat=$lat&lng=$lng&radio_km=$radioKm';
+    }
+    final data = await ApiClient.get(url) as List;
     return data.map((e) => Viaje.desdeJson(e as Map<String, dynamic>)).toList();
   }
 

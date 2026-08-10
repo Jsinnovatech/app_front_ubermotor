@@ -12,12 +12,17 @@ class ConductorProvider extends ChangeNotifier {
   List<Paquete> _paquetes = [];
   bool _cargando = false;
   String? _error;
+  int? _ultimoViajeNuevoId;
 
   Conductor? get perfil => _perfil;
   List<Viaje> get viajesDisponibles => _viajesDisponibles;
   List<Paquete> get paquetes => _paquetes;
   bool get cargando => _cargando;
   String? get error => _error;
+  int? get ultimoViajeNuevoId => _ultimoViajeNuevoId;
+
+  /// True si aparece un viaje que no estaba antes (para avisar como InDrive).
+  bool get hayViajeNuevo => _ultimoViajeNuevoId != null;
   int get saldo => _perfil?.saldoCarreras ?? 0;
 
   Future<void> cargarPerfil() async {
@@ -59,14 +64,29 @@ class ConductorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> cargarViajesDisponibles() async {
+  Future<void> cargarViajesDisponibles({double? lat, double? lng, double radioKm = 5}) async {
     try {
-      _viajesDisponibles = await ViajeService.disponibles();
+      final nuevos = await ViajeService.disponibles(lat: lat, lng: lng, radioKm: radioKm);
+      final idsViejos = _viajesDisponibles.map((v) => v.id).toSet();
+      final idNuevo = nuevos.where((v) => !idsViejos.contains(v.id)).map((v) => v.id).firstOrNull;
+      _viajesDisponibles = nuevos;
+      if (idNuevo != null) _ultimoViajeNuevoId = idNuevo;
       notifyListeners();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
     }
+  }
+
+  void consumirViajeNuevo() {
+    _ultimoViajeNuevoId = null;
+    notifyListeners();
+  }
+
+  Future<void> actualizarUbicacion({required double lat, required double lng}) async {
+    try {
+      await ConductorService.actualizarUbicacion(lat: lat, lng: lng);
+    } catch (_) {}
   }
 
   Future<void> aceptar(int viajeId) async {

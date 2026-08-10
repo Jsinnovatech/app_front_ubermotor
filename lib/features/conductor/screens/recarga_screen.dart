@@ -220,7 +220,10 @@ class _ExitoDialog extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  Navigator.of(context).pop(); // cierra el dialogo
+                  Navigator.of(context).pop(); // cierra la pantalla de recarga -> vuelve al home
+                },
                 child: const Text('Volver al Inicio'),
               ),
             ),

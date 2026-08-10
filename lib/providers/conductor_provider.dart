@@ -89,7 +89,12 @@ class ConductorProvider extends ChangeNotifier {
   }
 
   Future<void> recargar(int paqueteId) async {
-    await ConductorService.recargar(paqueteId: paqueteId);
+    final recarga = await ConductorService.recargar(paqueteId: paqueteId);
+    // El pago queda 'pendiente' hasta confirmarse; recien ahi se acredita el
+    // saldo del dia (regla de negocio).
+    if (recarga['id'] != null) {
+      await ConductorService.confirmarRecarga(recarga['id'] as int);
+    }
     await refrescarSaldo();
     notifyListeners();
   }

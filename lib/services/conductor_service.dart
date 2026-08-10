@@ -44,6 +44,13 @@ class ConductorService {
     return data as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> confirmarRecarga(int recargaId) async {
+    final data = await ApiClient.post(
+      '${ApiConfig.baseUrl}/api/v1/recargas/$recargaId/confirmar',
+    );
+    return data as Map<String, dynamic>;
+  }
+
   static Future<List<Viaje>> historial() async {
     final data = await ApiClient.get(ApiConfig.conductorHistorial) as List;
     return data.map((e) => Viaje.desdeJson(e as Map<String, dynamic>)).toList();

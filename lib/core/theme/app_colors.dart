@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 /// Paleta oficial de UberMotor: extraida del design system que aprobamos en
 /// Stitch (MotoRide Prepago App). No inventar tonos nuevos.
 class AppColors {

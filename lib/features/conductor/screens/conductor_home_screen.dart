@@ -28,7 +28,6 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ConductorProvider>();
-    final auth = context.watch<AuthProvider>();
     final disponible = provider.perfil?.disponible ?? false;
     final saldo = provider.saldo;
 

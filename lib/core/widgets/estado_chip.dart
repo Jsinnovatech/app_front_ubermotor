@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-
 /// Status badge pill del design system Kinetic Grid: fondo con tint al 15%
 /// del color de estado + texto con el color full-strength.
 class EstadoChip extends StatelessWidget {

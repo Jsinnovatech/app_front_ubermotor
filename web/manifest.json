@@ -1,0 +1,12 @@
+{
+  "name": "UberMotor",
+  "short_name": "UberMotor",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#F5B800",
+  "description": "UberMotor - moto-ride con saldo de carreras prepagado",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "icons": []
+}

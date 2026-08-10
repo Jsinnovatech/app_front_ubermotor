@@ -1,6 +1,10 @@
-/// Unica fuente de verdad de URLs del backend. Ningun service adivina rutas.
+/// Unica fuente de verdad de URLs del backend. En Railway se configura la
+/// variable de entorno API_BASE_URL (via --dart-define) al compilar Flutter Web.
 class ApiConfig {
-  static const String baseUrl = 'http://localhost:8000';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:8000',
+  );
 
   // Auth
   static const String registro = '$baseUrl/auth/registro';

@@ -80,14 +80,41 @@ class DetalleConductorSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('MOTO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: AppColors.textDim)),
-                const SizedBox(height: 6),
-                Text(
-                  '${conductor.moto.marca ?? '—'} ${conductor.moto.modelo ?? ''}'.trim(),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.black),
-                ),
-                Text(
-                  'Placa: ${conductor.moto.placa ?? '—'} · ${conductor.moto.color ?? ''}',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textDim, fontWeight: FontWeight.w600),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (conductor.moto.fotoUrl != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(conductor.moto.fotoUrl!, width: 64, height: 64, fit: BoxFit.cover),
+                      )
+                    else
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: AppColors.yellowSoft,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.two_wheeler, color: AppColors.black),
+                      ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${conductor.moto.marca ?? '—'} ${conductor.moto.modelo ?? ''}'.trim(),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.black),
+                          ),
+                          Text(
+                            'Placa: ${conductor.moto.placa ?? '—'} · ${conductor.moto.color ?? ''}',
+                            style: const TextStyle(fontSize: 13, color: AppColors.textDim, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

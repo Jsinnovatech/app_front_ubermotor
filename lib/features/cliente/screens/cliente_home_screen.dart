@@ -428,16 +428,39 @@ class _TarjetaMoto extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text(
-              conductor.nombre,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.black),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${conductor.moto.marca ?? ''} ${conductor.moto.modelo ?? ''}'.trim(),
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w600),
+            Row(
+              children: [
+                if (conductor.moto.fotoUrl != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.network(conductor.moto.fotoUrl!, width: 34, height: 34, fit: BoxFit.cover),
+                  )
+                else
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(6)),
+                    child: const Icon(Icons.two_wheeler, size: 18, color: AppColors.black),
+                  ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        conductor.nombre,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.black),
+                      ),
+                      Text(
+                        '${conductor.moto.marca ?? ''} ${conductor.moto.modelo ?? ''}'.trim(),
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),

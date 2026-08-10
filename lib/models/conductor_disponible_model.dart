@@ -3,8 +3,9 @@ class Moto {
   final String? modelo;
   final String? placa;
   final String? color;
+  final String? fotoUrl;
 
-  Moto({this.marca, this.modelo, this.placa, this.color});
+  Moto({this.marca, this.modelo, this.placa, this.color, this.fotoUrl});
 
   factory Moto.desdeJson(Map<String, dynamic>? json) {
     if (json == null) return Moto();
@@ -13,6 +14,7 @@ class Moto {
       modelo: json['modelo'],
       placa: json['placa'],
       color: json['color'],
+      fotoUrl: json['foto_url'],
     );
   }
 }

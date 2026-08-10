@@ -293,6 +293,17 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RecargaScreen()),
+                  ),
+                  icon: const Icon(Icons.add_circle, size: 20),
+                  label: const Text('Recargar carreras', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
               const SizedBox(height: 20),
               // Mapa con pines de los viajes disponibles
               SizedBox(

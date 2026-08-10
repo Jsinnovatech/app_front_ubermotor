@@ -42,19 +42,31 @@ class ConductorProvider extends ChangeNotifier {
   Future<void> refrescarSaldo() async {
     try {
       final saldo = await ConductorService.saldo();
-      _perfil = _perfil == null
-          ? null
-          : Conductor(
-              id: _perfil!.id,
-              nombre: _perfil!.nombre,
-              dni: _perfil!.dni,
-              ratingPromedio: _perfil!.ratingPromedio,
-              viajesCompletados: _perfil!.viajesCompletados,
-              disponible: _perfil!.disponible,
-              aprobado: _perfil!.aprobado,
-              saldoCarreras: saldo,
-              saldoFecha: _perfil!.saldoFecha,
-            );
+      if (_perfil != null) {
+        _perfil = Conductor(
+          id: _perfil!.id,
+          nombre: _perfil!.nombre,
+          dni: _perfil!.dni,
+          ratingPromedio: _perfil!.ratingPromedio,
+          viajesCompletados: _perfil!.viajesCompletados,
+          disponible: _perfil!.disponible,
+          aprobado: _perfil!.aprobado,
+          saldoCarreras: saldo,
+          saldoFecha: _perfil!.saldoFecha,
+        );
+      } else {
+        // Si el perfil aun no cargo, al menos guardamos el saldo en memoria
+        // con un mini-perfil para que el home nunca muestre 0 falso.
+        _perfil = Conductor(
+          id: 0,
+          nombre: '',
+          ratingPromedio: 5.0,
+          viajesCompletados: 0,
+          disponible: false,
+          aprobado: false,
+          saldoCarreras: saldo,
+        );
+      }
       notifyListeners();
     } catch (_) {}
   }

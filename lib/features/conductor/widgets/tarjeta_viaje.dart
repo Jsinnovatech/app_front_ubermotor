@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/estado_chip.dart';
 import '../../../models/viaje_model.dart';
 
 /// Tarjeta de un viaje disponible: origen/destino, tarifa y botones
@@ -53,6 +54,8 @@ class TarjetaViaje extends StatelessWidget {
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.black),
                 ),
                 const Spacer(),
+                EstadoChip(estado: viaje.estado, color: AppColors.azulEstado(viaje.estado)),
+                const SizedBox(width: 8),
                 Text(
                   viaje.metodoPagoCliente,
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textDim),

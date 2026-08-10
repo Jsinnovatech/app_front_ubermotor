@@ -52,6 +52,7 @@ class AppTheme {
           backgroundColor: AppColors.yellow,
           foregroundColor: AppColors.black,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+          minimumSize: const Size(0, 56),
           textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -67,20 +68,24 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: AppColors.white,
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.06),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.line, width: 1),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.white,
+        hintStyle: const TextStyle(color: AppColors.placeholder, fontWeight: FontWeight.w600),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.line, width: 2),
+          borderSide: const BorderSide(color: AppColors.black, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.line, width: 2),
+          borderSide: const BorderSide(color: AppColors.black, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

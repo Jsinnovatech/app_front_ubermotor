@@ -13,7 +13,8 @@ class AppColors {
   static const Color blue = Color(0xFF007AFF);
 
   static const Color textDim = Color(0xFF888888);
-  static const Color line = Color(0xFFEEEEEE);
+  static const Color line = Color(0xFFE0E0E0); // borde de cards (Kinetic Grid)
+  static const Color placeholder = Color(0xFF757575);
 
   // Estados de viaje (mismos nombres que el backend, sin traducir)
   static const Color solicitado = yellow;
@@ -22,4 +23,20 @@ class AppColors {
   static const Color completado = green;
   static const Color cancelado = red;
   static const Color rechazado = red;
+
+  static Color azulEstado(String estado) {
+    switch (estado) {
+      case 'completado':
+        return completado;
+      case 'cancelado':
+      case 'rechazado':
+        return cancelado;
+      case 'en_curso':
+      case 'asignado':
+        return enCurso;
+      case 'solicitado':
+      default:
+        return solicitado;
+    }
+  }
 }

@@ -8,6 +8,8 @@ import '../../../models/viaje_model.dart';
 import '../../../services/ubicacion_service.dart';
 import '../../../services/realtime_service.dart';
 import '../widgets/mapa_viajes.dart';
+import 'historial_viajes_screen.dart';
+import 'perfil_screen.dart';
 import 'recarga_screen.dart';
 
 /// Home del conductor replicado del diseno de Stitch (MotoRide):
@@ -316,7 +318,10 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                           style: TextStyle(color: AppColors.textDim, fontWeight: FontWeight.w600),
                         ),
                       )
-                    : MapaViajes(viajes: provider.viajesDisponibles),
+                    : MapaViajes(
+                        viajes: provider.viajesDisponibles,
+                        onViajeTap: (viaje) => _mostrarDetalleViaje(viaje),
+                      ),
               ),
               const SizedBox(height: 12),
               Expanded(
@@ -341,6 +346,61 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
         ),
       ),
       bottomNavigationBar: _BottomNav(provider: provider),
+    );
+  }
+
+  /// Abre el detalle de un viaje tocado en el mapa, con boton Aceptar.
+  Future<void> _mostrarDetalleViaje(Viaje viaje) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Carrera disponible', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _filaDetalle(Icons.place, viaje.origenDireccion ?? 'Origen'),
+            const SizedBox(height: 6),
+            _filaDetalle(Icons.sports_motorsports, viaje.destinoDireccion ?? 'Destino'),
+            const SizedBox(height: 12),
+            Text(
+              'S/ ${viaje.tarifa.toStringAsFixed(2)} · ${viaje.metodoPagoCliente}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.black),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.green, foregroundColor: AppColors.white),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              context.read<ConductorProvider>().aceptar(viaje.id).catchError((e) => _mostrarError(e));
+            },
+            child: const Text('Aceptar', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filaDetalle(IconData icono, String texto) {
+    return Row(
+      children: [
+        Icon(icono, size: 16, color: AppColors.yellow),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            texto,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.black),
+          ),
+        ),
+      ],
     );
   }
 
@@ -480,8 +540,15 @@ class _BottomNav extends StatelessWidget {
           return Expanded(
             child: InkWell(
               onTap: () {
-                if (label == 'Wallet') {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RecargaScreen()));
+                switch (label) {
+                  case 'Wallet':
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RecargaScreen()));
+                  case 'Rides':
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HistorialViajesScreen()));
+                  case 'Account':
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PerfilScreen()));
+                  default:
+                    break;
                 }
               },
               child: Column(

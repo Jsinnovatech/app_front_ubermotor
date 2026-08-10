@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import '../core/config/api_config.dart';
 import '../core/network/api_client.dart';
 import '../models/conductor_model.dart';
@@ -55,5 +56,21 @@ class ConductorService {
   static Future<List<Viaje>> historial() async {
     final data = await ApiClient.get(ApiConfig.conductorHistorial) as List;
     return data.map((e) => Viaje.desdeJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Sube un documento (foto/dni/licencia/antecedentes) a ImageKit.
+  static Future<Map<String, dynamic>> subirDocumento({
+    required String tipo,
+    required Uint8List bytes,
+    required String nombreArchivo,
+  }) async {
+    final data = await ApiClient.postFile(
+      '${ApiConfig.baseUrl}/api/v1/conductores/documentos',
+      campo: 'archivo',
+      bytes: bytes,
+      nombreArchivo: nombreArchivo,
+      query: {'tipo': tipo},
+    );
+    return data as Map<String, dynamic>;
   }
 }

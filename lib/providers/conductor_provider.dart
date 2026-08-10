@@ -9,6 +9,7 @@ import '../services/viaje_service.dart';
 class ConductorProvider extends ChangeNotifier {
   Conductor? _perfil;
   List<Viaje> _viajesDisponibles = [];
+  List<Viaje> _historial = [];
   List<Paquete> _paquetes = [];
   bool _cargando = false;
   String? _error;
@@ -16,6 +17,7 @@ class ConductorProvider extends ChangeNotifier {
 
   Conductor? get perfil => _perfil;
   List<Viaje> get viajesDisponibles => _viajesDisponibles;
+  List<Viaje> get historial => _historial;
   List<Paquete> get paquetes => _paquetes;
   bool get cargando => _cargando;
   String? get error => _error;
@@ -47,6 +49,12 @@ class ConductorProvider extends ChangeNotifier {
           id: _perfil!.id,
           nombre: _perfil!.nombre,
           dni: _perfil!.dni,
+          dniFotoUrl: _perfil!.dniFotoUrl,
+          licencia: _perfil!.licencia,
+          licenciaFotoUrl: _perfil!.licenciaFotoUrl,
+          fotoUrl: _perfil!.fotoUrl,
+          antecedentesFotoUrl: _perfil!.antecedentesFotoUrl,
+          antecedentesValido: _perfil!.antecedentesValido,
           ratingPromedio: _perfil!.ratingPromedio,
           viajesCompletados: _perfil!.viajesCompletados,
           disponible: _perfil!.disponible,
@@ -55,8 +63,6 @@ class ConductorProvider extends ChangeNotifier {
           saldoFecha: _perfil!.saldoFecha,
         );
       } else {
-        // Si el perfil aun no cargo, al menos guardamos el saldo en memoria
-        // con un mini-perfil para que el home nunca muestre 0 falso.
         _perfil = Conductor(
           id: 0,
           nombre: '',
@@ -126,6 +132,13 @@ class ConductorProvider extends ChangeNotifier {
   Future<void> cargarPaquetes() async {
     _paquetes = await ConductorService.paquetes();
     notifyListeners();
+  }
+
+  Future<void> cargarHistorial() async {
+    try {
+      _historial = await ConductorService.historial();
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> recargar(int paqueteId) async {

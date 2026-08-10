@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../models/conductor_disponible_model.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/cliente_provider.dart';
 import '../../../services/cliente_service.dart';
+import '../widgets/detalle_conductor_sheet.dart';
 
 /// Home del cliente replicado del diseno de Stitch (MotoRide):
 /// panel "¿A donde vamos?" con linea conectora origen/destino,
@@ -21,6 +24,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   String _metodo = 'efectivo';
   bool _cargando = false;
   String? _mensaje;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Carga las motos disponibles cerca (posicion por defecto: Lima centro).
+      context.read<ClienteProvider>().cargarConductores(lat: -12.0464, lng: -77.0428);
+    });
+  }
 
   @override
   void dispose() {
@@ -82,6 +94,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
           children: [
             // "Mapa" placeholder
             Expanded(
+              flex: 3,
               child: Container(
                 color: const Color(0xFFE2E3E0),
                 alignment: Alignment.center,
@@ -220,14 +233,26 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                 ],
               ),
             ),
+            // Motos disponibles cerca
+            _MotosCerca(
+              conductores: context.watch<ClienteProvider>().conductores,
+              onConductorTap: (c) => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: AppColors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                builder: (_) => DetalleConductorSheet(conductor: c),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _botonStepper(IconData icono, {required VoidCallback onTap}) {
-    return Container(
+  Widget _botonStepper(IconData icono, {required VoidCallback onTap}) {    return Container(
       width: 48,
       height: 48,
       decoration: BoxDecoration(
@@ -261,6 +286,113 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
             Text(
               label,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: seleccionado ? AppColors.white : AppColors.black),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Lista de motos disponibles cerca del cliente, con reputacion.
+class _MotosCerca extends StatelessWidget {
+  final List<ConductorDisponible> conductores;
+  final void Function(ConductorDisponible c) onConductorTap;
+
+  const _MotosCerca({required this.conductores, required this.onConductorTap});
+
+  @override
+  Widget build(BuildContext context) {
+    if (conductores.isEmpty) {
+      return Container(
+        height: 60,
+        alignment: Alignment.center,
+        color: AppColors.white,
+        child: const Text(
+          'Buscando motos cerca...',
+          style: TextStyle(color: AppColors.textDim, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+    return Container(
+      color: AppColors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+            child: Text(
+              'Motos disponibles cerca (${conductores.length})',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.black),
+            ),
+          ),
+          SizedBox(
+            height: 92,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: conductores.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, i) => _TarjetaMoto(
+                conductor: conductores[i],
+                onTap: () => onConductorTap(conductores[i]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TarjetaMoto extends StatelessWidget {
+  final ConductorDisponible conductor;
+  final VoidCallback onTap;
+
+  const _TarjetaMoto({required this.conductor, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 150,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.gray,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.star, color: AppColors.yellow, size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  conductor.ratingPromedio.toStringAsFixed(1),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.black),
+                ),
+                const Spacer(),
+                Text(
+                  '${conductor.distanciaKm.toStringAsFixed(1)}km',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              conductor.nombre,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.black),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${conductor.moto.marca ?? ''} ${conductor.moto.modelo ?? ''}'.trim(),
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w600),
             ),
           ],
         ),

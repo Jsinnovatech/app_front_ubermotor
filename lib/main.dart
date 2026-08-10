@@ -4,6 +4,7 @@ import 'core/navigation_service.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/conductor_provider.dart';
+import 'providers/cliente_provider.dart';
 
 import 'features/auth/screens/login_screen.dart';
 import 'features/conductor/screens/conductor_home_screen.dart';
@@ -23,6 +24,7 @@ class HablaVasApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ConductorProvider()),
+        ChangeNotifierProvider(create: (_) => ClienteProvider()),
       ],
       child: MaterialApp(
         title: 'HablaVas',

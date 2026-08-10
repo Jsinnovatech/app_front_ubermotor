@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -85,6 +86,29 @@ class ApiClient {
 
   static Future<dynamic> delete(String url, {bool conAuth = true}) async {
     final response = await http.delete(Uri.parse(url), headers: await _headers(conAuth: conAuth));
+    return _procesarRespuesta(response);
+  }
+
+  /// Sube un archivo (multipart). Para fotos/documentos del conductor.
+  static Future<dynamic> postFile(
+    String url, {
+    required String campo,
+    required Uint8List bytes,
+    required String nombreArchivo,
+    required Map<String, String> query,
+  }) async {
+    final request = http.MultipartRequest('POST', Uri.parse(url).replace(queryParameters: query));
+    final headers = await _headers();
+    request.headers.addAll(headers);
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        campo,
+        bytes,
+        filename: nombreArchivo,
+      ),
+    );
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
     return _procesarRespuesta(response);
   }
 }

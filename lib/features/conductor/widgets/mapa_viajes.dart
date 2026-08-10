@@ -6,11 +6,13 @@ import '../../../models/viaje_model.dart';
 
 /// Mapa de viajes disponibles (OpenStreetMap, sin API key) replicando el
 /// diseno de Stitch: fondo de mapa + pin central y pines por viaje.
-/// Cada viaje muestra origen (verde) y destino (negro).
+/// Cada viaje muestra origen (verde) y destino (negro). Al tocar un pin
+/// se abre el viaje para aceptar.
 class MapaViajes extends StatelessWidget {
   final List<Viaje> viajes;
+  final void Function(Viaje viaje)? onViajeTap;
 
-  const MapaViajes({super.key, required this.viajes});
+  const MapaViajes({super.key, required this.viajes, this.onViajeTap});
 
   @override
   Widget build(BuildContext context) {
@@ -20,17 +22,23 @@ class MapaViajes extends StatelessWidget {
         pines.add(
           Marker(
             point: LatLng(v.origenLat, v.origenLng),
-            width: 26,
-            height: 26,
-            child: const Icon(Icons.location_on, color: AppColors.green, size: 26),
+            width: 34,
+            height: 34,
+            child: GestureDetector(
+              onTap: () => onViajeTap?.call(v),
+              child: const Icon(Icons.location_on, color: AppColors.green, size: 34),
+            ),
           ),
         );
         pines.add(
           Marker(
             point: LatLng(v.destinoLat, v.destinoLng),
-            width: 26,
-            height: 26,
-            child: const Icon(Icons.sports_motorsports, color: AppColors.black, size: 22),
+            width: 34,
+            height: 34,
+            child: GestureDetector(
+              onTap: () => onViajeTap?.call(v),
+              child: const Icon(Icons.sports_motorsports, color: AppColors.black, size: 28),
+            ),
           ),
         );
       }

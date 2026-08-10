@@ -2,6 +2,12 @@ class Conductor {
   final int id;
   final String nombre;
   final String? dni;
+  final String? dniFotoUrl;
+  final String? licencia;
+  final String? licenciaFotoUrl;
+  final String? fotoUrl;
+  final String? antecedentesFotoUrl;
+  final bool? antecedentesValido;
   final double ratingPromedio;
   final int viajesCompletados;
   final bool disponible;
@@ -13,6 +19,12 @@ class Conductor {
     required this.id,
     required this.nombre,
     this.dni,
+    this.dniFotoUrl,
+    this.licencia,
+    this.licenciaFotoUrl,
+    this.fotoUrl,
+    this.antecedentesFotoUrl,
+    this.antecedentesValido,
     required this.ratingPromedio,
     required this.viajesCompletados,
     required this.disponible,
@@ -26,6 +38,12 @@ class Conductor {
       id: json['id'],
       nombre: json['nombre'],
       dni: json['dni'],
+      dniFotoUrl: json['dni_foto_url'],
+      licencia: json['licencia'],
+      licenciaFotoUrl: json['licencia_foto_url'],
+      fotoUrl: json['foto_url'],
+      antecedentesFotoUrl: json['antecedentes_foto_url'],
+      antecedentesValido: json['antecedentes_valido'],
       ratingPromedio: (json['rating_promedio'] as num?)?.toDouble() ?? 5.0,
       viajesCompletados: json['viajes_completados'] ?? 0,
       disponible: json['disponible'] ?? false,

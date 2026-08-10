@@ -4,7 +4,7 @@
 
 FROM ghcr.io/cirruslabs/flutter:3.44.0 AS build
 
-ARG API_BASE_URL=http://localhost:8000
+ARG API_BASE_URL=https://appbackubermotor-production.up.railway.app
 
 WORKDIR /app
 

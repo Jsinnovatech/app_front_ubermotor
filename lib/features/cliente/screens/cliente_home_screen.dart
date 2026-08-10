@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/boton_sos.dart';
 import '../../../models/conductor_disponible_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/cliente_provider.dart';
 import '../../../services/cliente_service.dart';
+import '../../../services/sos_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
 
 /// Home del cliente replicado del diseno de Stitch (MotoRide):
@@ -249,7 +251,28 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
           ],
         ),
       ),
+      floatingActionButton: BotonSos(onDisparar: _dispararSos),
     );
+  }
+
+  Future<void> _dispararSos() async {
+    if (!mounted) return;
+    try {
+      await SosService.activar(lat: -12.0464, lng: -77.0428);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.red,
+          content: Text('Alerta SOS enviada a Serenazgo/Policía', style: TextStyle(fontWeight: FontWeight.w800)),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''))),
+        );
+      }
+    }
   }
 
   Widget _botonStepper(IconData icono, {required VoidCallback onTap}) {    return Container(

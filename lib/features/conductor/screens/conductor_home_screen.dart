@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/boton_sos.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/conductor_provider.dart';
 import '../../../models/viaje_model.dart';
 import '../../../services/ubicacion_service.dart';
 import '../../../services/realtime_service.dart';
+import '../../../services/sos_service.dart';
 import '../widgets/mapa_viajes.dart';
 import 'historial_viajes_screen.dart';
 import 'perfil_screen.dart';
@@ -345,8 +347,30 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
           ),
         ),
       ),
+      floatingActionButton: BotonSos(
+        onDisparar: _dispararSos,
+      ),
       bottomNavigationBar: _BottomNav(provider: provider),
     );
+  }
+
+  Future<void> _dispararSos() async {
+    if (!mounted) return;
+    final posicion = await UbicacionService.obtenerPosicionActual();
+    final lat = posicion?.latitude ?? _miLat ?? -12.0464;
+    final lng = posicion?.longitude ?? _miLng ?? -77.0428;
+    try {
+      await SosService.activar(lat: lat, lng: lng);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.red,
+          content: Text('Alerta SOS enviada a Serenazgo/Policía', style: TextStyle(fontWeight: FontWeight.w800)),
+        ),
+      );
+    } catch (e) {
+      if (mounted) _mostrarError(e);
+    }
   }
 
   /// Abre el detalle de un viaje tocado en el mapa, con boton Aceptar.

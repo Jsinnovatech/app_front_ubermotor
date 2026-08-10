@@ -142,12 +142,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Segmented control estilo Stitch: Driver / Client / Admin.
+  /// Segmented control estilo Stitch: roles disponibles.
   Widget _segmentedRoles() {
     final opciones = [
       ('conductor', 'Conductor'),
       ('cliente', 'Cliente'),
       ('administrador', 'Admin'),
+      ('policia', 'Policía'),
     ];
     return Container(
       padding: const EdgeInsets.all(4),
@@ -177,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   etiqueta,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: seleccionado ? FontWeight.w800 : FontWeight.w600,
                     color: seleccionado ? AppColors.black : AppColors.textDim,
                   ),

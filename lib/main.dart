@@ -5,11 +5,13 @@ import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/conductor_provider.dart';
 import 'providers/cliente_provider.dart';
+import 'providers/autoridad_provider.dart';
 
 import 'features/auth/screens/login_screen.dart';
 import 'features/conductor/screens/conductor_home_screen.dart';
 import 'features/cliente/screens/cliente_home_screen.dart';
 import 'features/admin/screens/admin_shell_screen.dart';
+import 'features/autoridad/screens/autoridad_home_screen.dart';
 
 void main() {
   runApp(const HablaVasApp());
@@ -25,6 +27,7 @@ class HablaVasApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ConductorProvider()),
         ChangeNotifierProvider(create: (_) => ClienteProvider()),
+        ChangeNotifierProvider(create: (_) => AutoridadProvider()),
       ],
       child: MaterialApp(
         title: 'HablaVas',
@@ -61,6 +64,9 @@ class _Portero extends StatelessWidget {
         return const ClienteHomeScreen();
       case 'administrador':
         return const AdminShellScreen();
+      case 'serenazgo':
+      case 'policia':
+        return AutoridadHomeScreen(rol: auth.tipoUsuario!);
       default:
         return Scaffold(body: Center(child: Text('Rol desconocido: ${auth.tipoUsuario}')));
     }

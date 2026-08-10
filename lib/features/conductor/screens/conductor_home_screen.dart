@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/conductor_provider.dart';
+import '../widgets/mapa_viajes.dart';
 import 'recarga_screen.dart';
 
 /// Home del conductor replicado del diseno de Stitch (MotoRide):
@@ -197,7 +198,9 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              Expanded(
+              // Mapa con pines de los viajes disponibles
+              SizedBox(
+                height: 200,
                 child: provider.viajesDisponibles.isEmpty
                     ? const Center(
                         child: Text(
@@ -206,6 +209,12 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                           style: TextStyle(color: AppColors.textDim, fontWeight: FontWeight.w600),
                         ),
                       )
+                    : MapaViajes(viajes: provider.viajesDisponibles),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: provider.viajesDisponibles.isEmpty
+                    ? const SizedBox.shrink()
                     : ListView.builder(
                         itemCount: provider.viajesDisponibles.length,
                         itemBuilder: (_, i) => _filaViaje(provider, i),

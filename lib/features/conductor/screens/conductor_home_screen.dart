@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/conductor_provider.dart';
+import '../../../models/viaje_model.dart';
 import '../../../services/ubicacion_service.dart';
+import '../../../services/realtime_service.dart';
 import '../widgets/mapa_viajes.dart';
 import 'recarga_screen.dart';
 
@@ -22,6 +24,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
   Timer? _pollingTimer;
   double? _miLat;
   double? _miLng;
+  final _realtime = RealtimeService();
 
   @override
   void initState() {
@@ -29,6 +32,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ConductorProvider>().cargarPerfil();
       context.read<ConductorProvider>().cargarPaquetes();
+      _conectarWebSocket();
       _iniciarLoopDeUbicacion();
     });
   }
@@ -36,14 +40,43 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _realtime.desconectar();
     super.dispose();
   }
 
-  /// Modo loop: cada 15s captura la posicion actual, la sube al backend y
-  /// refresca los viajes de su zona (filtro por cercania).
+  /// Fase 2: WebSocket - los viajes nuevos llegan al instante (push InDrive).
+  void _conectarWebSocket() {
+    _realtime.onViajeNuevo = (datos) {
+      if (!mounted) return;
+      final provider = context.read<ConductorProvider>();
+      final viaje = Viaje.desdeJson(datos);
+      provider.agregarViajeRealtime(viaje);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.notifications_active, color: AppColors.yellow),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '¡Nueva carrera en tu zona! (#${viaje.id})',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    };
+    _realtime.conectar();
+  }
+
+  /// Fase 1: loop cada 5s (fallback). El push por WebSocket es el camino rapido.
   Future<void> _iniciarLoopDeUbicacion() async {
     await _actualizarPosicionYViajes();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _actualizarPosicionYViajes();
     });
   }

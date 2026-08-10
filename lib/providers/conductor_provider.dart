@@ -83,6 +83,14 @@ class ConductorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Viaje recibido por WebSocket (push): se agrega al tope si no existe.
+  void agregarViajeRealtime(Viaje viaje) {
+    if (_viajesDisponibles.any((v) => v.id == viaje.id)) return;
+    _viajesDisponibles.insert(0, viaje);
+    _ultimoViajeNuevoId = viaje.id;
+    notifyListeners();
+  }
+
   Future<void> actualizarUbicacion({required double lat, required double lng}) async {
     try {
       await ConductorService.actualizarUbicacion(lat: lat, lng: lng);

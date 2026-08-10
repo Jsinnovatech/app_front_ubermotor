@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Icon(Icons.two_wheeler, size: 60, color: AppColors.yellow),
                 const SizedBox(height: 8),
                 const Text(
-                  'UberMoto',
+                  'HablaVas',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: AppColors.black),
                 ),

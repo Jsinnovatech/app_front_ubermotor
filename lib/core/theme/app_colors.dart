@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Paleta oficial de UberMotor: extraida del design system que aprobamos en
+/// Paleta oficial de HablaVas: extraida del design system que aprobamos en
 /// Stitch (MotoRide Prepago App). No inventar tonos nuevos.
 class AppColors {
   static const Color yellow = Color(0xFFF5B800);

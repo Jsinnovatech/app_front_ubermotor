@@ -11,11 +11,11 @@ import 'features/cliente/screens/cliente_home_screen.dart';
 import 'features/admin/screens/admin_shell_screen.dart';
 
 void main() {
-  runApp(const UberMotorApp());
+  runApp(const HablaVasApp());
 }
 
-class UberMotorApp extends StatelessWidget {
-  const UberMotorApp({super.key});
+class HablaVasApp extends StatelessWidget {
+  const HablaVasApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class UberMotorApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ConductorProvider()),
       ],
       child: MaterialApp(
-        title: 'UberMotor',
+        title: 'HablaVas',
         theme: AppTheme.light,
         debugShowCheckedModeBanner: false,
         navigatorKey: navigatorKey,

@@ -7,7 +7,7 @@ import '../widgets/mapa_viajes.dart';
 import 'recarga_screen.dart';
 
 /// Home del conductor replicado del diseno de Stitch (MotoRide):
-/// header UberMoto, toggle Disponible, badge "Objetivo Diario" (saldo),
+/// header HablaVas, toggle Disponible, badge "Objetivo Diario" (saldo),
 /// "Balance de Hoy" con pill "No acumulable", y bottom nav.
 class ConductorHomeScreen extends StatefulWidget {
   const ConductorHomeScreen({super.key});
@@ -45,7 +45,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
               Icon(Icons.two_wheeler, color: AppColors.yellow, size: 26),
               SizedBox(width: 6),
               Text(
-                'UberMoto',
+                'HablaVas',
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.yellow),
               ),
             ],

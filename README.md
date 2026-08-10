@@ -1,6 +1,6 @@
-# UberMotor Frontend
+# HablaVas Frontend
 
-Frontend Flutter de **UberMotor** (moto-ride). Replica la arquitectura y
+Frontend Flutter de **HablaVas** (moto-ride). Replica la arquitectura y
 prácticas de **Comanda** (`app-front-comanda`): feature-first + capas.
 
 ## Estructura

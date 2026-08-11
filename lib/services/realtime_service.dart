@@ -4,15 +4,24 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../core/config/api_config.dart';
 import '../core/network/api_client.dart';
 
-/// Cliente WebSocket del conductor: recibe viajes nuevos al instante (push,
-/// patron InDrive). El polling de 5s queda como fallback.
+/// Cliente WebSocket de HablaVas:
+/// - Conductor: recibe viajes nuevos al instante (push, patron InDrive).
+/// - Cliente: recibe la ubicacion en vivo del conductor de su viaje (tracking).
+/// El polling queda como fallback.
 class RealtimeService {
   WebSocketChannel? _canal;
   StreamSubscription? _sub;
   void Function(Map<String, dynamic>)? onViajeNuevo;
+  void Function(int viajeId, double lat, double lng)? onUbicacionConductor;
   bool get conectado => _canal != null;
 
-  Future<bool> conectar() async {
+  /// Conexion del conductor: recibe carreras nuevas.
+  Future<bool> conectar() => _conectar('ws/conductores');
+
+  /// Conexion del cliente: recibe la ubicacion del conductor (tracking).
+  Future<bool> conectarCliente() => _conectar('ws/clientes');
+
+  Future<bool> _conectar(String path) async {
     await desconectar();
     final token = await ApiClient.obtenerToken();
     if (token == null) return false;
@@ -22,12 +31,19 @@ class RealtimeService {
         .replaceFirst('https://', 'wss://')
         .replaceFirst('http://', 'ws://');
     try {
-      _canal = WebSocketChannel.connect(Uri.parse('$wsUrl/ws/conductores?token=$token'));
+      _canal = WebSocketChannel.connect(Uri.parse('$wsUrl/$path?token=$token'));
       _sub = _canal!.stream.listen(
         (mensaje) {
           final datos = _decodificar(mensaje);
-          if (datos != null && datos['tipo'] == 'viaje_nuevo') {
+          if (datos == null) return;
+          if (datos['tipo'] == 'viaje_nuevo') {
             onViajeNuevo?.call(datos);
+          } else if (datos['tipo'] == 'ubicacion_conductor') {
+            onUbicacionConductor?.call(
+              (datos['viaje_id'] as num?)?.toInt() ?? 0,
+              (datos['lat'] as num).toDouble(),
+              (datos['lng'] as num).toDouble(),
+            );
           }
         },
         onError: (_) => _canal = null,

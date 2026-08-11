@@ -9,6 +9,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/cliente_provider.dart';
 import '../../../services/cliente_service.dart';
 import '../../../services/geocoding_service.dart';
+import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
 import '../../../services/ubicacion_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
@@ -40,6 +41,11 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   String? _destinoSeleccionado;
   double? _destinoLat;
   double? _destinoLng;
+  // Tracking en vivo: posicion del conductor de mi viaje activo.
+  double? _conductorLat;
+  double? _conductorLng;
+  String? _estadoViaje;
+  RealtimeService? _realtime;
 
   @override
   void initState() {
@@ -62,6 +68,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         }
         context.read<ClienteProvider>().cargarConductores(lat: lat, lng: lng);
       }
+      _conectarTracking();
     });
     _destino.addListener(_onDestinoCambio);
   }
@@ -70,7 +77,23 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   void dispose() {
     _origen.dispose();
     _destino.dispose();
+    _realtime?.desconectar();
     super.dispose();
+  }
+
+  /// Conexion WebSocket del cliente: recibe la ubicacion del conductor en vivo
+  /// mientras dure el viaje (el pin se mueve en el mapa, patron InDrive).
+  Future<void> _conectarTracking() async {
+    final realtime = RealtimeService();
+    _realtime = realtime;
+    realtime.onUbicacionConductor = (viajeId, lat, lng) {
+      if (!mounted) return;
+      setState(() {
+        _conductorLat = lat;
+        _conductorLng = lng;
+      });
+    };
+    await realtime.conectarCliente();
   }
 
   /// Autocompletado del destino mientras se escribe (debounce simple).
@@ -183,6 +206,8 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                 lat: _miLat,
                 lng: _miLng,
                 ubicacionCargada: _ubicacionCargada,
+                conductorLat: _conductorLat,
+                conductorLng: _conductorLng,
               ),
             ),
             // Panel de solicitud
@@ -588,12 +613,21 @@ class _TarjetaMoto extends StatelessWidget {
 
 /// Mapa de la ubicacion actual del cliente para reconfirmarla antes de pedir
 /// el viaje (OpenStreetMap, sin API key). Pin azul en la posicion actual.
+/// Si hay un conductor asignado, se muestra su pin (moto) moviendose en vivo.
 class _MapaUbicacion extends StatelessWidget {
   final double lat;
   final double lng;
   final bool ubicacionCargada;
+  final double? conductorLat;
+  final double? conductorLng;
 
-  const _MapaUbicacion({required this.lat, required this.lng, required this.ubicacionCargada});
+  const _MapaUbicacion({
+    required this.lat,
+    required this.lng,
+    required this.ubicacionCargada,
+    this.conductorLat,
+    this.conductorLng,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -604,6 +638,29 @@ class _MapaUbicacion extends StatelessWidget {
         child: const CircularProgressIndicator(color: AppColors.yellow),
       );
     }
+
+    final marcadores = <Marker>[
+      Marker(
+        point: LatLng(lat, lng),
+        width: 40,
+        height: 40,
+        child: const Icon(Icons.my_location, color: AppColors.blue, size: 40),
+      ),
+    ];
+    // Pin del conductor en vivo (tracking del viaje)
+    if (conductorLat != null && conductorLng != null) {
+      marcadores.add(
+        Marker(
+          point: LatLng(conductorLat!, conductorLng!),
+          width: 44,
+          height: 44,
+          child: const Icon(Icons.sports_motorsports, color: AppColors.green, size: 44),
+        ),
+      );
+    }
+
+    final hayConductor = conductorLat != null && conductorLng != null;
+
     return Stack(
       children: [
         Positioned.fill(
@@ -618,16 +675,7 @@ class _MapaUbicacion extends StatelessWidget {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.jsinnovatech.hablavas',
               ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: LatLng(lat, lng),
-                    width: 40,
-                    height: 40,
-                    child: const Icon(Icons.my_location, color: AppColors.blue, size: 40),
-                  ),
-                ],
-              ),
+              MarkerLayer(markers: marcadores),
             ],
           ),
         ),
@@ -641,17 +689,21 @@ class _MapaUbicacion extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.white,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppColors.line),
+                border: Border.all(color: hayConductor ? AppColors.green : AppColors.line),
                 boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.my_location, size: 14, color: AppColors.blue),
-                  SizedBox(width: 6),
+                  Icon(
+                    hayConductor ? Icons.sports_motorsports : Icons.my_location,
+                    size: 14,
+                    color: hayConductor ? AppColors.green : AppColors.blue,
+                  ),
+                  const SizedBox(width: 6),
                   Text(
-                    'Tu ubicación actual',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.black),
+                    hayConductor ? 'Tu conductor en camino' : 'Tu ubicación actual',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.black),
                   ),
                 ],
               ),

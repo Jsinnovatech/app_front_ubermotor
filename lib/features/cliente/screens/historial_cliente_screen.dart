@@ -4,6 +4,7 @@ import '../../../core/widgets/estado_chip.dart';
 import '../../../models/viaje_model.dart';
 import '../../../services/calificacion_service.dart';
 import '../../../services/cliente_service.dart';
+import '../../../services/viaje_service.dart';
 
 /// Historial de viajes del cliente: ve sus viajes y califica al conductor.
 class HistorialClienteScreen extends StatefulWidget {
@@ -30,6 +31,40 @@ class _HistorialClienteScreenState extends State<HistorialClienteScreen> {
       _viajes = await ClienteService.historial();
     } catch (_) {}
     if (mounted) setState(() => _cargando = false);
+  }
+
+  Future<void> _cancelar(int viajeId) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('¿Cancelar el viaje?', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: const Text('Si ya hay un conductor asignado, se le devuelve la carrera.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.red, foregroundColor: AppColors.white),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+
+    try {
+      await ViajeService.cancelar(viajeId);
+      await _cargar();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Viaje cancelado')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''))),
+      );
+    }
   }
 
   Future<void> _calificar(int viajeId) async {
@@ -138,6 +173,22 @@ class _HistorialClienteScreenState extends State<HistorialClienteScreen> {
                                   onPressed: () => _calificar(v.id),
                                   icon: const Icon(Icons.star, size: 18),
                                   label: const Text('Calificar al conductor', style: TextStyle(fontWeight: FontWeight.w800)),
+                                ),
+                              ),
+                            ],
+                            if (v.estado == 'solicitado') ...[
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 40,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.red,
+                                    side: const BorderSide(color: AppColors.red, width: 1.2),
+                                  ),
+                                  onPressed: () => _cancelar(v.id),
+                                  icon: const Icon(Icons.cancel, size: 18),
+                                  label: const Text('Cancelar viaje', style: TextStyle(fontWeight: FontWeight.w800)),
                                 ),
                               ),
                             ],

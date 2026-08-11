@@ -7,9 +7,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/autoridad_provider.dart';
 
-/// Pantalla de Serenazgo/Policia: alertas SOS activas con todos los datos
-/// del involucrado (cliente/chofer), la moto, el seguro y ubicacion en el
-/// mapa. Refresca cada 5s para seguir el movimiento en tiempo real.
+/// Pantalla de Serenazgo/Policia: Central SOS epica.
+/// - Mapa con pin SOS pulsante (faros), foto del cliente y la moto del conductor.
+/// - La moto se mueve en vivo (ubicacion actual cada 3s).
+/// - Panel con fotos y datos del involucrado.
 class AutoridadHomeScreen extends StatefulWidget {
   final String rol;
   const AutoridadHomeScreen({super.key, required this.rol});
@@ -20,22 +21,37 @@ class AutoridadHomeScreen extends StatefulWidget {
 
 class _AutoridadHomeScreenState extends State<AutoridadHomeScreen> {
   Timer? _timer;
+  Timer? _movimientoTimer;
   AlertaAutoridad? _seleccionada;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AutoridadProvider>().cargarAlertas();
+      _cargarTodo();
       _timer = Timer.periodic(const Duration(seconds: 5), (_) {
-        if (mounted) context.read<AutoridadProvider>().cargarAlertas();
+        if (mounted) _cargarTodo();
       });
     });
+  }
+
+  Future<void> _cargarTodo() async {
+    final provider = context.read<AutoridadProvider>();
+    await provider.cargarAlertas();
+    final alerta = _seleccionada ?? (provider.alertas.isNotEmpty ? provider.alertas.first : null);
+    if (alerta != null && mounted) {
+      provider.cargarUbicacionVivo(alerta.id);
+      _movimientoTimer?.cancel();
+      _movimientoTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        if (mounted) context.read<AutoridadProvider>().cargarUbicacionVivo(alerta.id);
+      });
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _movimientoTimer?.cancel();
     super.dispose();
   }
 
@@ -45,13 +61,13 @@ class _AutoridadHomeScreenState extends State<AutoridadHomeScreen> {
     final alerta = _seleccionada ?? (provider.alertas.isNotEmpty ? provider.alertas.first : null);
 
     return Scaffold(
-      backgroundColor: AppColors.gray,
+      backgroundColor: AppColors.black,
       appBar: AppBar(
-        backgroundColor: AppColors.gray,
+        backgroundColor: AppColors.black,
         elevation: 0,
         title: Text(
-          widget.rol == 'policia' ? 'Policía · Central SOS' : 'Serenazgo · Central SOS',
-          style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.black),
+          widget.rol == 'policia' ? '🚨 Policía · Central SOS' : '🚨 Serenazgo · Central SOS',
+          style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.white),
         ),
         actions: [
           IconButton(
@@ -70,11 +86,11 @@ class _AutoridadHomeScreenState extends State<AutoridadHomeScreen> {
                   SizedBox(height: 12),
                   Text(
                     'Sin alertas SOS activas',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.black),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.white),
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Se actualiza automáticamente cada 5 segundos.',
+                    'Se actualiza automáticamente.',
                     style: TextStyle(fontSize: 12.5, color: AppColors.textDim),
                   ),
                 ],
@@ -82,20 +98,21 @@ class _AutoridadHomeScreenState extends State<AutoridadHomeScreen> {
             )
           : Column(
               children: [
-                // Mapa con la ubicacion del SOS (y la contraparte si viaja)
+                // Mapa épico: faros, cliente y moto en movimiento
                 Expanded(
                   flex: 5,
-                  child: _MapaAlerta(alerta: alerta),
+                  child: _MapaSos(
+                    alerta: alerta,
+                    motoLat: provider.motoLat,
+                    motoLng: provider.motoLng,
+                  ),
                 ),
-                // Datos de la alerta
+                // Panel de datos con fotos
                 Expanded(
                   flex: 5,
-                  child: _PanelAlerta(
+                  child: _PanelSos(
                     alerta: alerta,
                     onMarcar: () => context.read<AutoridadProvider>().cerrarAlerta(alerta.id),
-                    onCambiar: _seleccionada == null
-                        ? null
-                        : () => setState(() => _seleccionada = null),
                   ),
                 ),
               ],
@@ -104,64 +121,188 @@ class _AutoridadHomeScreenState extends State<AutoridadHomeScreen> {
   }
 }
 
-class _MapaAlerta extends StatelessWidget {
+/// Mapa con el pulso SOS animado (faros), el pin del cliente y la moto del
+/// conductor moviendose con su foto.
+class _MapaSos extends StatelessWidget {
   final AlertaAutoridad alerta;
-  const _MapaAlerta({required this.alerta});
+  final double? motoLat;
+  final double? motoLng;
+
+  const _MapaSos({required this.alerta, this.motoLat, this.motoLng});
 
   @override
   Widget build(BuildContext context) {
-    final marcadores = <Marker>[
-      Marker(
-        point: LatLng(alerta.ubicacionLat, alerta.ubicacionLng),
-        width: 40,
-        height: 40,
-        child: const Icon(Icons.sos, color: AppColors.red, size: 40),
-      ),
-    ];
-    if (alerta.contraparteUbicacionLat != null && alerta.contraparteUbicacionLng != null) {
-      marcadores.add(
-        Marker(
-          point: LatLng(alerta.contraparteUbicacionLat!, alerta.contraparteUbicacionLng!),
-          width: 34,
-          height: 34,
-          child: const Icon(Icons.two_wheeler, color: AppColors.blue, size: 34),
-        ),
-      );
-    }
+    // Pin de la moto: usa la ubicacion en vivo (si hay) o la de la alerta.
+    final motoLatActual = motoLat ?? alerta.contraparteUbicacionLat ?? alerta.ubicacionLat;
+    final motoLngActual = motoLng ?? alerta.contraparteUbicacionLng ?? alerta.ubicacionLng;
 
-    return ClipRRect(
-      child: FlutterMap(
-        options: MapOptions(
-          initialCenter: LatLng(alerta.ubicacionLat, alerta.ubicacionLng),
-          initialZoom: 13,
-          interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
-        ),
-        children: [
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.jsinnovatech.hablavas',
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: FlutterMap(
+            options: MapOptions(
+              initialCenter: LatLng(alerta.ubicacionLat, alerta.ubicacionLng),
+              initialZoom: 14,
+              interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.jsinnovatech.hablavas',
+              ),
+              MarkerLayer(
+                markers: [
+                  // Faro pulsante del SOS (en la posicion del que pide ayuda)
+                  Marker(
+                    point: LatLng(alerta.ubicacionLat, alerta.ubicacionLng),
+                    width: 56,
+                    height: 56,
+                    child: _FaroSos(esCliente: alerta.origen == 'cliente'),
+                  ),
+                  // Moto del conductor con foto, en movimiento
+                  Marker(
+                    point: LatLng(motoLatActual, motoLngActual),
+                    width: 52,
+                    height: 52,
+                    child: _PinMoto(fotoUrl: alerta.motoFotoUrl ?? alerta.contraparteFotoUrl),
+                  ),
+                ],
+              ),
+            ],
           ),
-          MarkerLayer(markers: marcadores),
-        ],
-      ),
+        ),
+        Positioned(
+          left: 12,
+          top: 12,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.black.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(color: AppColors.red, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'SIGUIENDO EN VIVO',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.white, letterSpacing: 1),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _PanelAlerta extends StatelessWidget {
-  final AlertaAutoridad alerta;
-  final VoidCallback onMarcar;
-  final VoidCallback? onCambiar;
+/// Faro pulsante (animado) del SOS.
+class _FaroSos extends StatefulWidget {
+  final bool esCliente;
+  const _FaroSos({required this.esCliente});
 
-  const _PanelAlerta({required this.alerta, required this.onMarcar, this.onCambiar});
+  @override
+  State<_FaroSos> createState() => _FaroSosState();
+}
+
+class _FaroSosState extends State<_FaroSos> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _pulso;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))..repeat(reverse: true);
+    _pulso = Tween(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulso,
+      builder: (_, __) {
+        return Center(
+          child: Container(
+            width: 40 * _pulso.value,
+            height: 40 * _pulso.value,
+            decoration: BoxDecoration(
+              color: widget.esCliente ? AppColors.blue.withValues(alpha: 0.5) : AppColors.red.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: (widget.esCliente ? AppColors.blue : AppColors.red).withValues(alpha: 0.6),
+                  blurRadius: 12 * _pulso.value,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: const Icon(Icons.sos, size: 20, color: Colors.white),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Pin de la moto del conductor con foto (o icono).
+class _PinMoto extends StatelessWidget {
+  final String? fotoUrl;
+  const _PinMoto({this.fotoUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.green, width: 3),
+            boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 6)],
+          ),
+          child: fotoUrl != null
+              ? ClipOval(child: Image.network(fotoUrl!, width: 38, height: 38, fit: BoxFit.cover))
+              : const Icon(Icons.sports_motorsports, color: AppColors.green, size: 24),
+        ),
+      ],
+    );
+  }
+}
+
+/// Panel con las fotos del cliente y la moto, mas los datos.
+class _PanelSos extends StatelessWidget {
+  final AlertaAutoridad alerta;
+  final VoidCallback onMarcar;
+
+  const _PanelSos({required this.alerta, required this.onMarcar});
+
+  @override
+  Widget build(BuildContext context) {
+    final esCliente = alerta.origen == 'cliente';
+    final fotoInvolucrado = alerta.fotoUrl ?? alerta.contraparteFotoUrl;
+    final fotoMoto = alerta.motoFotoUrl;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,40 +312,84 @@ class _PanelAlerta extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.redSoft,
+                  color: esCliente ? AppColors.blue : AppColors.red,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  'SOS #${alerta.id} · ${alerta.origen}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.red),
+                  'SOS #${alerta.id} · ${esCliente ? 'CLIENTE' : 'CONDUCTOR'}',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5),
                 ),
               ),
               const Spacer(),
-              if (onCambiar != null)
-                TextButton(onPressed: onCambiar, child: const Text('Cambiar alerta')),
+              const Icon(Icons.gps_fixed, color: AppColors.red, size: 16),
             ],
           ),
-          const SizedBox(height: 10),
-          _fila(Icons.person, 'Persona', '${alerta.nombre ?? '—'} · ${alerta.telefono ?? ''}'),
-          const SizedBox(height: 6),
-          _fila(Icons.directions_bike, 'Moto', alerta.moto ?? '—'),
-          const SizedBox(height: 6),
-          _fila(Icons.verified_user, 'Seguro', alerta.seguro ?? '—'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 12),
+          // Fotos del involucrado y de la moto
+          Row(
+            children: [
+              _FotoPersona(label: esCliente ? 'Cliente' : 'Conductor', fotoUrl: fotoInvolucrado),
+              const SizedBox(width: 12),
+              _FotoPersona(label: 'Moto', fotoUrl: fotoMoto, esMoto: true),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      alerta.nombre ?? '—',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.black),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      alerta.telefono ?? '',
+                      style: const TextStyle(fontSize: 13, color: AppColors.textDim, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      alerta.moto ?? 'Moto sin registrar',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.black),
+                    ),
+                    if (alerta.seguro != null)
+                      Text(
+                        'Seguro: ${alerta.seguro}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textDim, fontWeight: FontWeight.w600),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           if (alerta.contraparteNombre != null)
-            _fila(
-              Icons.people,
-              'Contraparte',
-              '${alerta.contraparteNombre} · ${alerta.contraparteTelefono ?? ''}',
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.gray,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(esCliente ? Icons.sports_motorsports : Icons.person, size: 18, color: AppColors.yellow),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${esCliente ? 'Conductor' : 'Cliente'}: ${alerta.contraparteNombre} · ${alerta.contraparteTelefono ?? ''}',
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.black),
+                    ),
+                  ),
+                ],
+              ),
             ),
           const Spacer(),
           SizedBox(
             width: double.infinity,
             height: 48,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.green, foregroundColor: AppColors.white),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.green, foregroundColor: Colors.white),
               onPressed: onMarcar,
-              child: const Text('Marcar como atendida', style: TextStyle(fontWeight: FontWeight.w800)),
+              icon: const Icon(Icons.check_circle, size: 18),
+              label: const Text('Marcar como atendida', style: TextStyle(fontWeight: FontWeight.w900)),
             ),
           ),
         ],
@@ -212,15 +397,24 @@ class _PanelAlerta extends StatelessWidget {
     );
   }
 
-  Widget _fila(IconData icono, String label, String valor) {
-    return Row(
+  Widget _FotoPersona({required String label, String? fotoUrl, bool esMoto = false}) {
+    return Column(
       children: [
-        Icon(icono, size: 18, color: AppColors.yellow),
-        const SizedBox(width: 10),
-        SizedBox(width: 100, child: Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.textDim))),
-        Expanded(
-          child: Text(valor, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.black)),
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppColors.yellowSoft,
+            shape: BoxShape.circle,
+            border: Border.all(color: esMoto ? AppColors.green : AppColors.blue, width: 2),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: fotoUrl != null
+              ? Image.network(fotoUrl, width: 56, height: 56, fit: BoxFit.cover)
+              : Icon(esMoto ? Icons.sports_motorsports : Icons.person, color: AppColors.black, size: 28),
         ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.black)),
       ],
     );
   }

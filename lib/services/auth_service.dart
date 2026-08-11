@@ -38,4 +38,26 @@ class AuthService {
   static SesionActual _sesionDesdeLogin(Map<String, dynamic> data) {
     return SesionActual.desdeJson(data);
   }
+
+  static Future<String> solicitarReset({required String email}) async {
+    final data = await ApiClient.post(
+      '${ApiConfig.baseUrl}/auth/solicitar-reset',
+      conAuth: false,
+      body: {'email': email},
+    );
+    return data['message'] as String;
+  }
+
+  static Future<String> resetearPassword({
+    required String email,
+    required String codigo,
+    required String nuevaPassword,
+  }) async {
+    final data = await ApiClient.post(
+      '${ApiConfig.baseUrl}/auth/resetear-password',
+      conAuth: false,
+      body: {'email': email, 'codigo': codigo, 'nueva_password': nuevaPassword},
+    );
+    return data['message'] as String;
+  }
 }

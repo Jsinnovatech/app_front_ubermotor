@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/auth_provider.dart';
+import 'reset_password_screen.dart';
 
 /// Login replicado 1:1 del diseno de Stitch (MotoRide): card blanca con
 /// borde, segmented control de rol (Driver/Client/Admin), inputs con iconos,
@@ -124,6 +125,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (!_esRegistro)
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ResetPasswordScreen()),
+                    ),
+                    child: const Text(
+                      '¿Olvidaste tu contraseña?',
+                      style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.yellow),
+                    ),
+                  ),
                 TextButton(
                   onPressed: () => setState(() {
                     _esRegistro = !_esRegistro;

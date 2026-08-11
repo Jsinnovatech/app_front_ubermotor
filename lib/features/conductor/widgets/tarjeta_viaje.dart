@@ -46,6 +46,40 @@ class TarjetaViaje extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            // Rider: nombre + puntuacion
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.gray,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: AppColors.yellowSoft,
+                    backgroundImage: viaje.riderFotoUrl != null ? NetworkImage(viaje.riderFotoUrl!) : null,
+                    child: viaje.riderFotoUrl == null
+                        ? const Icon(Icons.person, size: 14, color: AppColors.black)
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      viaje.riderNombre ?? 'Cliente',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.black),
+                    ),
+                  ),
+                  const Icon(Icons.star, size: 14, color: AppColors.yellow),
+                  const SizedBox(width: 3),
+                  Text(
+                    viaje.riderRating?.toStringAsFixed(1) ?? '—',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.black),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
             Row(
               children: [

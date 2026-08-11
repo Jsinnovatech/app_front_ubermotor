@@ -11,6 +11,9 @@ class Viaje {
   final String metodoPagoCliente;
   final String? origenDireccion;
   final String? destinoDireccion;
+  final String? riderNombre;
+  final double? riderRating;
+  final String? riderFotoUrl;
 
   Viaje({
     required this.id,
@@ -25,6 +28,9 @@ class Viaje {
     required this.metodoPagoCliente,
     this.origenDireccion,
     this.destinoDireccion,
+    this.riderNombre,
+    this.riderRating,
+    this.riderFotoUrl,
   });
 
   factory Viaje.desdeJson(Map<String, dynamic> json) {
@@ -41,6 +47,9 @@ class Viaje {
       metodoPagoCliente: json['metodo_pago_cliente'],
       origenDireccion: json['origen_direccion'],
       destinoDireccion: json['destino_direccion'],
+      riderNombre: json['rider_nombre'],
+      riderRating: (json['rider_rating'] as num?)?.toDouble(),
+      riderFotoUrl: json['rider_foto_url'],
     );
   }
 }

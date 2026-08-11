@@ -388,6 +388,19 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
             _filaDetalle(Icons.place, viaje.origenDireccion ?? 'Origen'),
             const SizedBox(height: 6),
             _filaDetalle(Icons.sports_motorsports, viaje.destinoDireccion ?? 'Destino'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(viaje.riderFotoUrl != null ? Icons.person : Icons.person, size: 16, color: AppColors.yellow),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Rider: ${viaje.riderNombre ?? 'Cliente'} · ⭐ ${viaje.riderRating?.toStringAsFixed(1) ?? '—'}',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.black),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             Text(
               'S/ ${viaje.tarifa.toStringAsFixed(2)} · ${viaje.metodoPagoCliente}',

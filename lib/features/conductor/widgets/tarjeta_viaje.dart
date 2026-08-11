@@ -59,10 +59,17 @@ class TarjetaViaje extends StatelessWidget {
                   CircleAvatar(
                     radius: 14,
                     backgroundColor: AppColors.yellowSoft,
-                    backgroundImage: viaje.riderFotoUrl != null ? NetworkImage(viaje.riderFotoUrl!) : null,
-                    child: viaje.riderFotoUrl == null
-                        ? const Icon(Icons.person, size: 14, color: AppColors.black)
-                        : null,
+                    child: viaje.riderFotoUrl != null
+                        ? ClipOval(
+                            child: Image.network(
+                              viaje.riderFotoUrl!,
+                              width: 28,
+                              height: 28,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 14, color: AppColors.black),
+                            ),
+                          )
+                        : const Icon(Icons.person, size: 14, color: AppColors.black),
                   ),
                   const SizedBox(width: 8),
                   Expanded(

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/boton_sos.dart';
@@ -29,16 +31,24 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   String _metodo = 'efectivo';
   bool _cargando = false;
   String? _mensaje;
+  double _miLat = -12.0464;
+  double _miLng = -77.0428;
+  bool _ubicacionCargada = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Ubicacion real del cliente para ver las motos mas cercanas.
+      // Ubicacion real del cliente para el mapa y las motos mas cercanas.
       final posicion = await UbicacionService.obtenerPosicionActual();
       final lat = posicion?.latitude ?? -12.0464;
       final lng = posicion?.longitude ?? -77.0428;
       if (mounted) {
+        setState(() {
+          _miLat = lat;
+          _miLng = lng;
+          _ubicacionCargada = true;
+        });
         context.read<ClienteProvider>().cargarConductores(lat: lat, lng: lng);
       }
     });
@@ -62,10 +72,10 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     });
     try {
       await ClienteService.solicitarViaje(
-        origenLat: 0,
-        origenLng: 0,
-        destinoLat: 0,
-        destinoLng: 0,
+        origenLat: _miLat,
+        origenLng: _miLng,
+        destinoLat: _miLat,
+        destinoLng: _miLng,
         origenDireccion: _origen.text.trim(),
         destinoDireccion: _destino.text.trim(),
         tarifa: 3.0,
@@ -116,13 +126,13 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // "Mapa" placeholder
+            // Mapa con la ubicacion actual del cliente (para reconfirmar)
             Expanded(
               flex: 3,
-              child: Container(
-                color: const Color(0xFFE2E3E0),
-                alignment: Alignment.center,
-                child: const Icon(Icons.location_on, size: 40, color: AppColors.black),
+              child: _MapaUbicacion(
+                lat: _miLat,
+                lng: _miLng,
+                ubicacionCargada: _ubicacionCargada,
               ),
             ),
             // Panel de solicitud
@@ -465,6 +475,83 @@ class _TarjetaMoto extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Mapa de la ubicacion actual del cliente para reconfirmarla antes de pedir
+/// el viaje (OpenStreetMap, sin API key). Pin azul en la posicion actual.
+class _MapaUbicacion extends StatelessWidget {
+  final double lat;
+  final double lng;
+  final bool ubicacionCargada;
+
+  const _MapaUbicacion({required this.lat, required this.lng, required this.ubicacionCargada});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!ubicacionCargada) {
+      return Container(
+        color: const Color(0xFFE2E3E0),
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(color: AppColors.yellow),
+      );
+    }
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: FlutterMap(
+            options: MapOptions(
+              initialCenter: LatLng(lat, lng),
+              initialZoom: 15,
+              interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.jsinnovatech.hablavas',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: LatLng(lat, lng),
+                    width: 40,
+                    height: 40,
+                    child: const Icon(Icons.my_location, color: AppColors.blue, size: 40),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 10,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppColors.line),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.my_location, size: 14, color: AppColors.blue),
+                  SizedBox(width: 6),
+                  Text(
+                    'Tu ubicación actual',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.black),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

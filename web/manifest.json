@@ -1,12 +1,35 @@
 {
-  "name": "HablaVas",
-  "short_name": "HablaVas",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#141414",
-  "theme_color": "#F5B800",
-  "description": "HablaVas - moto-ride con saldo de carreras prepagado",
-  "orientation": "portrait-primary",
-  "prefer_related_applications": false,
-  "icons": []
+    "name": "HablaVas",
+    "short_name": "HablaVas",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#141414",
+    "theme_color": "#F5B800",
+    "description": "HablaVas - moto-ride con saldo de carreras prepagado",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
 }

@@ -79,12 +79,22 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.two_wheeler, size: 60, color: AppColors.yellow),
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: Image.asset(
+                      'logo_icons/logo.webp',
+                      width: 96,
+                      height: 96,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 const Text(
                   'HablaVas',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: AppColors.black),
+                  style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: AppColors.black),
                 ),
                 Text(
                   _esRegistro ? 'Crea tu cuenta' : 'Ingresa a tu cuenta',

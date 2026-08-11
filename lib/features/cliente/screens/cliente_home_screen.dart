@@ -8,6 +8,7 @@ import '../../../models/conductor_disponible_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/cliente_provider.dart';
 import '../../../services/cliente_service.dart';
+import '../../../services/geocoding_service.dart';
 import '../../../services/sos_service.dart';
 import '../../../services/ubicacion_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
@@ -34,6 +35,11 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   double _miLat = -12.0464;
   double _miLng = -77.0428;
   bool _ubicacionCargada = false;
+  List<SugerenciaLugar> _sugerencias = [];
+  bool _buscandoDestino = false;
+  String? _destinoSeleccionado;
+  double? _destinoLat;
+  double? _destinoLng;
 
   @override
   void initState() {
@@ -49,9 +55,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
           _miLng = lng;
           _ubicacionCargada = true;
         });
+        // Reverse geocoding: convierte las coords en la direccion del origen.
+        final direccion = await GeocodingService.reverse(lat, lng);
+        if (mounted && direccion != null) {
+          _origen.text = direccion;
+        }
         context.read<ClienteProvider>().cargarConductores(lat: lat, lng: lng);
       }
     });
+    _destino.addListener(_onDestinoCambio);
   }
 
   @override
@@ -61,9 +73,47 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     super.dispose();
   }
 
+  /// Autocompletado del destino mientras se escribe (debounce simple).
+  Future<void> _onDestinoCambio() async {
+    final texto = _destino.text.trim();
+    if (texto.length < 3 || _destinoSeleccionado == texto) {
+      if (texto.length < 3) {
+        if (mounted && _sugerencias.isNotEmpty) setState(() => _sugerencias = []);
+      }
+      return;
+    }
+    setState(() => _buscandoDestino = true);
+    final resultado = await GeocodingService.autocompletar(texto, lat: _miLat, lng: _miLng);
+    if (mounted) setState(() {
+      _sugerencias = resultado;
+      _buscandoDestino = false;
+    });
+  }
+
+  void _usarUbicacionActual() async {
+    final posicion = await UbicacionService.obtenerPosicionActual();
+    if (posicion == null || !mounted) {
+      if (mounted) setState(() => _mensaje = 'No se pudo obtener tu ubicación. Revisa los permisos.');
+      return;
+    }
+    setState(() {
+      _miLat = posicion.latitude;
+      _miLng = posicion.longitude;
+      _ubicacionCargada = true;
+      _sugerencias = [];
+    });
+    final direccion = await GeocodingService.reverse(posicion.latitude, posicion.longitude);
+    if (mounted && direccion != null) _origen.text = direccion;
+    context.read<ClienteProvider>().cargarConductores(lat: posicion.latitude, lng: posicion.longitude);
+  }
+
   Future<void> _solicitar() async {
     if (_destino.text.trim().isEmpty) {
       setState(() => _mensaje = 'Indica el destino');
+      return;
+    }
+    if (_destinoLat == null) {
+      setState(() => _mensaje = 'Selecciona el destino del autocompletado');
       return;
     }
     setState(() {
@@ -74,8 +124,8 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       await ClienteService.solicitarViaje(
         origenLat: _miLat,
         origenLng: _miLng,
-        destinoLat: _miLat,
-        destinoLng: _miLng,
+        destinoLat: _destinoLat!,
+        destinoLng: _destinoLng!,
         origenDireccion: _origen.text.trim(),
         destinoDireccion: _destino.text.trim(),
         tarifa: 3.0,
@@ -194,9 +244,14 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                               TextField(
                                 controller: _origen,
                                 style: const TextStyle(fontSize: 16, color: AppColors.black),
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   hintText: 'Punto de partida',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
+                                  border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
+                                  suffixIcon: IconButton(
+                                    tooltip: 'Usar mi ubicación actual',
+                                    icon: const Icon(Icons.my_location, color: AppColors.blue, size: 20),
+                                    onPressed: _usarUbicacionActual,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -208,6 +263,58 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                                   border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
                                 ),
                               ),
+                              // Sugerencias de autocompletado del destino
+                              if (_sugerencias.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.line),
+                                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                  ),
+                                  child: Column(
+                                    children: _sugerencias.map((s) {
+                                      return InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _destino.text = s.nombre;
+                                            _destinoSeleccionado = s.nombre;
+                                            _destinoLat = s.lat;
+                                            _destinoLng = s.lng;
+                                            _sugerencias = [];
+                                          });
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.place, size: 16, color: AppColors.yellow),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  s.nombre,
+                                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.black),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                )
+                              else if (_buscandoDestino)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 6),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                                      SizedBox(width: 8),
+                                      Text('Buscando...', style: TextStyle(fontSize: 12, color: AppColors.textDim)),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                         ),

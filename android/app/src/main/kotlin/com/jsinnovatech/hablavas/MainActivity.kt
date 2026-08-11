@@ -1,4 +1,4 @@
-package com.example.hablavas
+package com.jsinnovatech.hablavas
 
 import io.flutter.embedding.android.FlutterActivity
 

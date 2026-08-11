@@ -1,0 +1,33 @@
+workflows:
+  android-apk-workflow:
+    name: Build Android APK (solo APK, sin Play Store)
+    max_build_duration: 30
+    environment:
+      flutter: 3.44.9 # misma version que el entorno local del equipo (3.44.9)
+
+    # Sin triggering: no corre automatico con cada push. Se dispara manual
+    # desde el dashboard de Codemagic cuando se necesite un APK para probar.
+    # El release build usa signingConfigs "debug" (asi viene el proyecto,
+    # sin keystore propio todavia) - sirve para instalar y probar, no para
+    # publicar en ninguna tienda.
+
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      - name: Build release APK
+        script: flutter build apk --release --dart-define=API_BASE_URL=https://appbackubermotor-production.up.railway.app
+
+      - name: Peso del APK generado
+        script: ls -lh build/app/outputs/flutter-apk/*.apk
+
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+
+    publishing:
+      email:
+        recipients:
+          - alancairampoma@gmail.com
+        notify:
+          success: true
+          failure: true

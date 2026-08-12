@@ -8,7 +8,10 @@ import '../../../models/viaje_model.dart';
 /// diseno de Stitch: fondo de mapa + pin central y pines por viaje.
 /// Cada viaje muestra origen (verde) y destino (negro). Al tocar un pin
 /// se abre el viaje para aceptar.
-class MapaViajes extends StatelessWidget {
+/// El mapa se CENTRA en la ubicacion actual del conductor (latConductor/
+/// lngConductor) y dibuja el circulo de rango (radioKm). Cuando la posicion
+/// cambia, la camara se mueve a la nueva ubicacion.
+class MapaViajes extends StatefulWidget {
   final List<Viaje> viajes;
   final void Function(Viaje viaje)? onViajeTap;
   final double? latConductor;
@@ -25,17 +28,45 @@ class MapaViajes extends StatelessWidget {
   });
 
   @override
+  State<MapaViajes> createState() => _MapaViajesState();
+}
+
+class _MapaViajesState extends State<MapaViajes> {
+  final MapController _mapController = MapController();
+
+  @override
+  void didUpdateWidget(covariant MapaViajes oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final cambioPosicion =
+        oldWidget.latConductor != widget.latConductor ||
+        oldWidget.lngConductor != widget.lngConductor;
+    if (cambioPosicion &&
+        widget.latConductor != null &&
+        widget.lngConductor != null &&
+        _mapController.camera != null) {
+      // Mueve la camara a la nueva posicion del conductor (sin saltar al
+      // centro del mundo). Solo cuando hay una posicion real.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.move(
+          LatLng(widget.latConductor!, widget.lngConductor!),
+          _mapController.camera.zoom,
+        );
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final pines = <Marker>[];
-    if (viajes.isNotEmpty) {
-      for (var v in viajes) {
+    if (widget.viajes.isNotEmpty) {
+      for (var v in widget.viajes) {
         pines.add(
           Marker(
             point: LatLng(v.origenLat, v.origenLng),
             width: 34,
             height: 34,
             child: GestureDetector(
-              onTap: () => onViajeTap?.call(v),
+              onTap: () => widget.onViajeTap?.call(v),
               child: const Icon(Icons.location_on, color: AppColors.green, size: 34),
             ),
           ),
@@ -46,7 +77,7 @@ class MapaViajes extends StatelessWidget {
             width: 34,
             height: 34,
             child: GestureDetector(
-              onTap: () => onViajeTap?.call(v),
+              onTap: () => widget.onViajeTap?.call(v),
               child: const Icon(Icons.sports_motorsports, color: AppColors.black, size: 28),
             ),
           ),
@@ -54,10 +85,10 @@ class MapaViajes extends StatelessWidget {
       }
     }
 
-    final tienePosicion = latConductor != null && lngConductor != null;
+    final tienePosicion = widget.latConductor != null && widget.lngConductor != null;
     final centro = LatLng(
-      latConductor ?? -12.0464,
-      lngConductor ?? -77.0428,
+      widget.latConductor ?? -12.0464,
+      widget.lngConductor ?? -77.0428,
     );
 
     final circuloRango = <CircleMarker>[];
@@ -65,7 +96,7 @@ class MapaViajes extends StatelessWidget {
       circuloRango.add(
         CircleMarker(
           point: centro,
-          radius: radioKm * 1000, // km -> metros
+          radius: widget.radioKm * 1000, // km -> metros
           useRadiusInMeter: true,
           color: AppColors.yellow.withOpacity(0.10),
           borderColor: AppColors.yellow,
@@ -87,6 +118,7 @@ class MapaViajes extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: FlutterMap(
+        mapController: _mapController,
         options: MapOptions(
           initialCenter: centro,
           initialZoom: 13,

@@ -79,8 +79,10 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     final provider = context.read<ConductorProvider>();
     final posicion = await UbicacionService.obtenerPosicionActual();
     if (posicion != null) {
-      _miLat = posicion.latitude;
-      _miLng = posicion.longitude;
+      setState(() {
+        _miLat = posicion.latitude;
+        _miLng = posicion.longitude;
+      });
       provider.actualizarUbicacion(lat: posicion.latitude, lng: posicion.longitude);
       provider.cargarViajesDisponibles(lat: posicion.latitude, lng: posicion.longitude, radioKm: 5);
     } else {
@@ -100,16 +102,27 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.gray,
         elevation: 0,
-        leadingWidth: 90,
+        leadingWidth: 120,
         leading: Padding(
           padding: const EdgeInsets.only(left: 20),
           child: Row(
             children: const [
-              Icon(Icons.two_wheeler, color: AppColors.yellow, size: 26),
+              Icon(Icons.two_wheeler, color: AppColors.black, size: 26),
               SizedBox(width: 6),
               Text(
                 'HablaVas',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.yellow),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                  color: AppColors.black,
+                  shadows: [
+                    Shadow(color: AppColors.yellow, offset: Offset(-1, -1)),
+                    Shadow(color: AppColors.yellow, offset: Offset(1, -1)),
+                    Shadow(color: AppColors.yellow, offset: Offset(-1, 1)),
+                    Shadow(color: AppColors.yellow, offset: Offset(1, 1)),
+                    Shadow(color: AppColors.yellow, offset: Offset(0, 2), blurRadius: 1),
+                  ],
+                ),
               ),
             ],
           ),

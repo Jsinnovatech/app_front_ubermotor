@@ -11,8 +11,18 @@ import '../../../models/viaje_model.dart';
 class MapaViajes extends StatelessWidget {
   final List<Viaje> viajes;
   final void Function(Viaje viaje)? onViajeTap;
+  final double? latConductor;
+  final double? lngConductor;
+  final double radioKm;
 
-  const MapaViajes({super.key, required this.viajes, this.onViajeTap});
+  const MapaViajes({
+    super.key,
+    required this.viajes,
+    this.onViajeTap,
+    this.latConductor,
+    this.lngConductor,
+    this.radioKm = 5,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -44,12 +54,42 @@ class MapaViajes extends StatelessWidget {
       }
     }
 
+    final tienePosicion = latConductor != null && lngConductor != null;
+    final centro = LatLng(
+      latConductor ?? -12.0464,
+      lngConductor ?? -77.0428,
+    );
+
+    final circuloRango = <CircleMarker>[];
+    if (tienePosicion) {
+      circuloRango.add(
+        CircleMarker(
+          point: centro,
+          radius: radioKm * 1000, // km -> metros
+          useRadiusInMeter: true,
+          color: AppColors.yellow.withOpacity(0.10),
+          borderColor: AppColors.yellow,
+          borderStrokeWidth: 2,
+        ),
+      );
+    }
+
+    final pinConductor = <Marker>[
+      if (tienePosicion)
+        Marker(
+          point: centro,
+          width: 44,
+          height: 44,
+          child: const Icon(Icons.two_wheeler, color: AppColors.yellow, size: 40),
+        ),
+    ];
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: FlutterMap(
         options: MapOptions(
-          initialCenter: LatLng(-12.0464, -77.0428), // Lima
-          initialZoom: 12,
+          initialCenter: centro,
+          initialZoom: 13,
           interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
         ),
         children: [
@@ -57,7 +97,8 @@ class MapaViajes extends StatelessWidget {
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             userAgentPackageName: 'com.jsinnovatech.ubermotor',
           ),
-          MarkerLayer(markers: pines),
+          CircleLayer(circles: circuloRango),
+          MarkerLayer(markers: [...pinConductor, ...pines]),
         ],
       ),
     );

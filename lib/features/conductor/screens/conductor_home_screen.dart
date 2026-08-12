@@ -322,6 +322,9 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                       )
                     : MapaViajes(
                         viajes: provider.viajesDisponibles,
+                        latConductor: _miLat,
+                        lngConductor: _miLng,
+                        radioKm: 5,
                         onViajeTap: (viaje) => _mostrarDetalleViaje(viaje),
                       ),
               ),

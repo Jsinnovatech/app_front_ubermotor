@@ -291,17 +291,6 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                 ],
               ),
             ),
-            // Mapa con la ubicacion actual del cliente (para reconfirmar)
-            Expanded(
-              flex: 3,
-              child: _MapaUbicacion(
-                lat: _miLat,
-                lng: _miLng,
-                ubicacionCargada: _ubicacionCargada,
-                conductorLat: _conductorLat,
-                conductorLng: _conductorLng,
-              ),
-            ),
             // Panel de solicitud
             Container(
               width: double.infinity,
@@ -321,12 +310,12 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(999)),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   const Text(
                     '¿A dónde vamos?',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.black),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.black),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   // Linea conectora origen/destino
                   IntrinsicHeight(
                     child: Row(
@@ -438,57 +427,75 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Ofrece tu tarifa',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.black),
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
+                  // Fila compacta: tarifa + metodo de pago juntos
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _botonStepper(Icons.remove, onTap: () {}),
-                      const Expanded(
-                        child: TextField(
-                          textAlign: TextAlign.center,
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.black),
-                          decoration: InputDecoration(
-                            prefixText: 'S/ ',
-                            hintText: '3.00',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
-                          ),
+                      Expanded(
+                        flex: 2,
+                        child: Row(
+                          children: [
+                            _botonStepper(Icons.remove, onTap: () {}),
+                            const Expanded(
+                              child: TextField(
+                                textAlign: TextAlign.center,
+                                keyboardType: TextInputType.number,
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.black),
+                                decoration: InputDecoration(
+                                  prefixText: 'S/ ',
+                                  hintText: '3.00',
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
+                                ),
+                              ),
+                            ),
+                            _botonStepper(Icons.add, onTap: () {}),
+                          ],
                         ),
                       ),
-                      _botonStepper(Icons.add, onTap: () {}),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 3,
+                        child: Row(
+                          children: [
+                            Expanded(child: _chipPago('Efectivo', Icons.payments)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _chipPago('Yape', Icons.qr_code_scanner)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   const Text(
-                    'Tarifa mínima S/ 3.00',
+                    'Tarifa mínima S/ 3.00 · pago directo al conductor',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: AppColors.textDim, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(child: _chipPago('Efectivo', Icons.payments)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _chipPago('Yape', Icons.qr_code_scanner)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   if (_mensaje != null) ...[
                     Text(_mensaje!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                   ],
                   SizedBox(
-                    height: 56,
+                    height: 48,
                     child: ElevatedButton(
                       onPressed: _cargando ? null : _solicitar,
                       child: Text(_cargando ? 'Solicitando...' : 'Pedir viaje'),
                     ),
                   ),
                 ],
+              ),
+            ),
+            // Mapa con la ubicacion actual del cliente (para reconfirmar).
+            // Debajo del panel para que se vea en buena proporcion.
+            Expanded(
+              child: _MapaUbicacion(
+                lat: _miLat,
+                lng: _miLng,
+                ubicacionCargada: _ubicacionCargada,
+                conductorLat: _conductorLat,
+                conductorLng: _conductorLng,
               ),
             ),
             // Motos disponibles cerca
@@ -811,6 +818,20 @@ class _MapaUbicacion extends StatelessWidget {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.jsinnovatech.hablavas',
+              ),
+              // Radio de ubicacion: circulo de 1km alrededor de donde esta el
+              // cliente, para que entienda el area donde buscan motos.
+              CircleLayer(
+                circles: [
+                  CircleMarker(
+                    point: LatLng(lat, lng),
+                    radius: 1000, // 1km en metros
+                    useRadiusInMeter: true,
+                    color: AppColors.yellow.withOpacity(0.10),
+                    borderColor: AppColors.yellow,
+                    borderStrokeWidth: 2,
+                  ),
+                ],
               ),
               MarkerLayer(markers: marcadores),
             ],

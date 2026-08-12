@@ -32,6 +32,11 @@ class ViajeService {
     return Viaje.desdeJson(data);
   }
 
+  static Future<Viaje> llegar(int viajeId) async {
+    final data = await ApiClient.post(ApiConfig.viajeLlegar(viajeId));
+    return Viaje.desdeJson(data);
+  }
+
   static Future<Viaje> completar(int viajeId) async {
     final data = await ApiClient.post(ApiConfig.viajeCompletar(viajeId));
     return Viaje.desdeJson(data);
@@ -39,6 +44,11 @@ class ViajeService {
 
   static Future<Viaje> cancelar(int viajeId) async {
     final data = await ApiClient.post(ApiConfig.viajeCancelar(viajeId));
+    return Viaje.desdeJson(data);
+  }
+
+  static Future<Viaje?> obtenerEstado(int viajeId) async {
+    final data = await ApiClient.get('${ApiConfig.baseUrl}/api/v1/viajes/$viajeId');
     return Viaje.desdeJson(data);
   }
 }

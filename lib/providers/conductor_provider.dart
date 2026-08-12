@@ -14,6 +14,7 @@ class ConductorProvider extends ChangeNotifier {
   bool _cargando = false;
   String? _error;
   int? _ultimoViajeNuevoId;
+  Viaje? _viajeActivo;
 
   Conductor? get perfil => _perfil;
   List<Viaje> get viajesDisponibles => _viajesDisponibles;
@@ -22,10 +23,18 @@ class ConductorProvider extends ChangeNotifier {
   bool get cargando => _cargando;
   String? get error => _error;
   int? get ultimoViajeNuevoId => _ultimoViajeNuevoId;
+  Viaje? get viajeActivo => _viajeActivo;
 
   /// True si aparece un viaje que no estaba antes (para avisar como InDrive).
   bool get hayViajeNuevo => _ultimoViajeNuevoId != null;
   int get saldo => _perfil?.saldoCarreras ?? 0;
+
+  Future<void> cargarViajeActivo() async {
+    try {
+      _viajeActivo = await ConductorService.viajeActivo();
+      notifyListeners();
+    } catch (_) {}
+  }
 
   Future<void> cargarPerfil() async {
     _cargando = true;
@@ -124,6 +133,28 @@ class ConductorProvider extends ChangeNotifier {
 
   Future<void> rechazar(int viajeId) async {
     final viaje = await ViajeService.rechazar(viajeId);
+    _viajesDisponibles.removeWhere((v) => v.id == viaje.id);
+    await refrescarSaldo();
+    notifyListeners();
+  }
+
+  Future<Viaje> llegar(int viajeId) async {
+    final viaje = await ViajeService.llegar(viajeId);
+    _viajeActivo = viaje;
+    notifyListeners();
+    return viaje;
+  }
+
+  Future<Viaje> iniciar(int viajeId) async {
+    final viaje = await ViajeService.iniciar(viajeId);
+    _viajeActivo = viaje;
+    notifyListeners();
+    return viaje;
+  }
+
+  Future<void> completar(int viajeId) async {
+    final viaje = await ViajeService.completar(viajeId);
+    _viajeActivo = null;
     _viajesDisponibles.removeWhere((v) => v.id == viaje.id);
     await refrescarSaldo();
     notifyListeners();

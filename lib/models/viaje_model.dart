@@ -14,6 +14,12 @@ class Viaje {
   final String? riderNombre;
   final double? riderRating;
   final String? riderFotoUrl;
+  final String? conductorNombre;
+  final double? conductorRating;
+  final String? conductorFotoUrl;
+  final String? motoDescripcion;
+  final String? motoPlaca;
+  final String? motoFotoUrl;
 
   Viaje({
     required this.id,
@@ -31,6 +37,12 @@ class Viaje {
     this.riderNombre,
     this.riderRating,
     this.riderFotoUrl,
+    this.conductorNombre,
+    this.conductorRating,
+    this.conductorFotoUrl,
+    this.motoDescripcion,
+    this.motoPlaca,
+    this.motoFotoUrl,
   });
 
   factory Viaje.desdeJson(Map<String, dynamic> json) {
@@ -50,6 +62,12 @@ class Viaje {
       riderNombre: json['rider_nombre'],
       riderRating: (json['rider_rating'] as num?)?.toDouble(),
       riderFotoUrl: json['rider_foto_url'],
+      conductorNombre: json['conductor_nombre'],
+      conductorRating: (json['conductor_rating'] as num?)?.toDouble(),
+      conductorFotoUrl: json['conductor_foto_url'],
+      motoDescripcion: json['moto_descripcion'],
+      motoPlaca: json['moto_placa'],
+      motoFotoUrl: json['moto_foto_url'],
     );
   }
 }

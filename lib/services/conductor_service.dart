@@ -13,6 +13,12 @@ class ConductorService {
     return Conductor.desdeJson(data);
   }
 
+  static Future<Viaje?> viajeActivo() async {
+    final data = await ApiClient.get(ApiConfig.conductorViajeActivo);
+    if (data == null) return null;
+    return Viaje.desdeJson(data);
+  }
+
   static Future<Conductor> cambiarDisponibilidad({required bool disponible}) async {
     final data = await ApiClient.put(
       ApiConfig.conductorDisponibilidad,

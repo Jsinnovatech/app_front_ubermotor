@@ -19,11 +19,13 @@ class ApiConfig {
   static const String conductorPaquetes = '$baseUrl/api/v1/conductores/paquetes';
   static const String conductorRecargar = '$baseUrl/api/v1/conductores/recargar';
   static const String conductorHistorial = '$baseUrl/api/v1/conductores/historial';
+  static const String conductorViajeActivo = '$baseUrl/api/v1/conductores/viaje-activo';
 
   // Viajes
   static const String viajesDisponibles = '$baseUrl/api/v1/viajes/disponibles';
   static String viajeAceptar(int id) => '$baseUrl/api/v1/viajes/$id/aceptar';
   static String viajeRechazar(int id) => '$baseUrl/api/v1/viajes/$id/rechazar';
+  static String viajeLlegar(int id) => '$baseUrl/api/v1/viajes/$id/llegar';
   static String viajeIniciar(int id) => '$baseUrl/api/v1/viajes/$id/iniciar';
   static String viajeCompletar(int id) => '$baseUrl/api/v1/viajes/$id/completar';
   static String viajeCancelar(int id) => '$baseUrl/api/v1/viajes/$id/cancelar';

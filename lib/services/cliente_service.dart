@@ -46,4 +46,10 @@ class ClienteService {
     final data = await ApiClient.get(ApiConfig.clienteHistorial) as List;
     return data.map((e) => Viaje.desdeJson(e as Map<String, dynamic>)).toList();
   }
+
+  static Future<Viaje?> viajeActivo() async {
+    final data = await ApiClient.get('${ApiConfig.baseUrl}/api/v1/clientes/viaje-activo');
+    if (data == null) return null;
+    return Viaje.desdeJson(data);
+  }
 }

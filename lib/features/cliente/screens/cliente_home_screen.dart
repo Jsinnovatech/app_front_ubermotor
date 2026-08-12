@@ -14,6 +14,7 @@ import '../../../services/sos_service.dart';
 import '../../../services/ubicacion_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
 import 'historial_cliente_screen.dart';
+import 'seguimiento_viaje_screen.dart';
 import '../../ranking/screens/ranking_screen.dart';
 
 /// Home del cliente replicado del diseno de Stitch (MotoRide):
@@ -144,7 +145,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       _mensaje = null;
     });
     try {
-      await ClienteService.solicitarViaje(
+      final viaje = await ClienteService.solicitarViaje(
         origenLat: _miLat,
         origenLng: _miLng,
         destinoLat: _destinoLat!,
@@ -154,9 +155,14 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         tarifa: 3.0,
         metodoPago: _metodo,
       );
-      setState(() => _mensaje = 'Viaje solicitado. Un conductor pronto lo tomará.');
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => SeguimientoViajeScreen(viaje: viaje)),
+      );
     } catch (e) {
-      setState(() => _mensaje = e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''));
+      if (mounted) {
+        setState(() => _mensaje = e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''));
+      }
     } finally {
       if (mounted) setState(() => _cargando = false);
     }

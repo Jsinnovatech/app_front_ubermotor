@@ -11,6 +11,8 @@ import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
 import '../widgets/mapa_viajes.dart';
 import '../widgets/panel_carrera_nueva.dart';
+import 'calificar_screen.dart';
+import 'carrera_en_curso_screen.dart';
 import 'historial_viajes_screen.dart';
 import 'perfil_screen.dart';
 import 'recarga_screen.dart';
@@ -40,6 +42,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
       context.read<ConductorProvider>().cargarPaquetes();
       _conectarWebSocket();
       _iniciarLoopDeUbicacion();
+      _revisarViajeActivo();
     });
   }
 
@@ -339,14 +342,27 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     setState(() => _carreraPendiente = viaje);
   }
 
+  /// Si el conductor ya tiene una carrera activa (recargó la app en medio de
+  /// un viaje, o el WS no estaba conectado), lo manda a la pantalla correcta.
+  Future<void> _revisarViajeActivo() async {
+    final provider = context.read<ConductorProvider>();
+    await provider.cargarViajeActivo();
+    final activo = provider.viajeActivo;
+    if (activo != null && mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => CarreraEnCursoScreen(viaje: activo)),
+      );
+    }
+  }
+
   Future<void> _aceptarCarrera(Viaje viaje) async {
     if (!mounted) return;
     setState(() => _carreraPendiente = null);
     try {
       await context.read<ConductorProvider>().aceptar(viaje.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Carrera aceptada: ${viaje.origenDireccion ?? ''} → ${viaje.destinoDireccion ?? ''}')),
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => CarreraEnCursoScreen(viaje: viaje)),
       );
     } catch (e) {
       if (!mounted) return;
@@ -423,9 +439,17 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.green, foregroundColor: AppColors.white),
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              context.read<ConductorProvider>().aceptar(viaje.id).catchError((e) => _mostrarError(e));
+              try {
+                await context.read<ConductorProvider>().aceptar(viaje.id);
+                if (!mounted) return;
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => CarreraEnCursoScreen(viaje: viaje)),
+                );
+              } catch (e) {
+                if (mounted) _mostrarError(e);
+              }
             },
             child: const Text('Aceptar', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
@@ -527,7 +551,17 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                   height: 44,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.green, foregroundColor: AppColors.white),
-                    onPressed: () => provider.aceptar(viaje.id).catchError((e) => _mostrarError(e)),
+                    onPressed: () async {
+                      try {
+                        await provider.aceptar(viaje.id);
+                        if (!mounted) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => CarreraEnCursoScreen(viaje: viaje)),
+                        );
+                      } catch (e) {
+                        if (mounted) _mostrarError(e);
+                      }
+                    },
                     child: const Text('Aceptar'),
                   ),
                 ),

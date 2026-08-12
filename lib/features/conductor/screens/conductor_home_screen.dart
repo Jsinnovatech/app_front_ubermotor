@@ -10,6 +10,7 @@ import '../../../services/ubicacion_service.dart';
 import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
 import '../widgets/mapa_viajes.dart';
+import '../widgets/panel_carrera_nueva.dart';
 import 'historial_viajes_screen.dart';
 import 'perfil_screen.dart';
 import 'recarga_screen.dart';
@@ -28,6 +29,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
   Timer? _pollingTimer;
   double? _miLat;
   double? _miLng;
+  Viaje? _carreraPendiente;
   final _realtime = RealtimeService();
 
   @override
@@ -55,24 +57,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
       final provider = context.read<ConductorProvider>();
       final viaje = Viaje.desdeJson(datos);
       provider.agregarViajeRealtime(viaje);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.notifications_active, color: AppColors.yellow),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '¡Nueva carrera en tu zona! (#${viaje.id})',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      _mostrarCarreraNueva(viaje);
     };
     _realtime.conectar();
   }
@@ -105,33 +90,6 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     final disponible = provider.perfil?.disponible ?? false;
     final saldo = provider.saldo;
 
-    // Aviso tipo InDrive: llego un viaje nuevo a mi zona.
-    if (provider.hayViajeNuevo && mounted) {
-      final idNuevo = provider.ultimoViajeNuevoId;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || idNuevo == null) return;
-        provider.consumirViajeNuevo();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.notifications_active, color: AppColors.yellow),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '¡Nueva carrera en tu zona! (#$idNuevo)',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      });
-    }
-
     return Scaffold(
       backgroundColor: AppColors.gray,
       appBar: AppBar(
@@ -162,12 +120,14 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
               // Toggle Disponible
               Container(
                 padding: const EdgeInsets.all(16),
@@ -348,13 +308,54 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
               ),
             ],
           ),
+          ),
         ),
+        if (_carreraPendiente != null)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 12,
+            child: PanelCarreraNueva(
+              viaje: _carreraPendiente!,
+              onAceptar: () => _aceptarCarrera(_carreraPendiente!),
+              onRechazar: () => _rechazarCarrera(_carreraPendiente!),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: BotonSos(
         onDisparar: _dispararSos,
       ),
       bottomNavigationBar: _BottomNav(provider: provider),
     );
+  }
+
+  void _mostrarCarreraNueva(Viaje viaje) {
+    if (!mounted) return;
+    setState(() => _carreraPendiente = viaje);
+  }
+
+  Future<void> _aceptarCarrera(Viaje viaje) async {
+    if (!mounted) return;
+    setState(() => _carreraPendiente = null);
+    try {
+      await context.read<ConductorProvider>().aceptar(viaje.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Carrera aceptada: ${viaje.origenDireccion ?? ''} → ${viaje.destinoDireccion ?? ''}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _mostrarError(e);
+    }
+  }
+
+  Future<void> _rechazarCarrera(Viaje viaje) async {
+    if (!mounted) return;
+    setState(() => _carreraPendiente = null);
+    try {
+      await context.read<ConductorProvider>().rechazar(viaje.id);
+    } catch (_) {}
   }
 
   Future<void> _dispararSos() async {

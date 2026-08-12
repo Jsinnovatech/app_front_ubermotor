@@ -218,9 +218,10 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Mapa con pines de los viajes disponibles (mas grande)
-              Expanded(
-                flex: 3,
+              // Mapa con pines de los viajes disponibles (altura fija para
+              // que nunca se comprima a 0 en pantallas de movil)
+              SizedBox(
+                height: 280,
                 child: provider.viajesDisponibles.isEmpty
                     ? const Center(
                         child: Text(
@@ -238,32 +239,35 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                       ),
               ),
               const SizedBox(height: 12),
-              // Card de carrera activa: solo visible cuando hay viaje en curso
-              if (provider.viajeActivo != null)
+              // Card de carrera activa: cuando hay viaje en curso, es el foco
+              // principal (el conductor no puede tomar otra carrera).
+              if (provider.viajeActivo != null) ...[
                 _CardViajeActivo(
                   viaje: provider.viajeActivo!,
                   onCambio: () => context.read<ConductorProvider>().cargarViajeActivo(),
                 ),
-              const SizedBox(height: 12),
-              // Lista de viajes disponibles
-              Expanded(
-                flex: 2,
-                child: provider.viajesDisponibles.isEmpty
-                    ? const SizedBox.shrink()
-                    : ListView.builder(
-                        itemCount: provider.viajesDisponibles.length,
-                        itemBuilder: (_, i) => _filaViaje(provider, i),
-                      ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 44,
-                child: OutlinedButton.icon(
-                  onPressed: _actualizarPosicionYViajes,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Actualizar viajes'),
+                const SizedBox(height: 12),
+              ],
+              // Lista de viajes disponibles: solo cuando no hay carrera activa
+              if (provider.viajeActivo == null) ...[
+                Expanded(
+                  child: provider.viajesDisponibles.isEmpty
+                      ? const SizedBox.shrink()
+                      : ListView.builder(
+                          itemCount: provider.viajesDisponibles.length,
+                          itemBuilder: (_, i) => _filaViaje(provider, i),
+                        ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: _actualizarPosicionYViajes,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Actualizar viajes'),
+                  ),
+                ),
+              ],
             ],
           ),
           ),

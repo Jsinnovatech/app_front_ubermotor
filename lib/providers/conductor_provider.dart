@@ -52,36 +52,9 @@ class ConductorProvider extends ChangeNotifier {
 
   Future<void> refrescarSaldo() async {
     try {
-      final saldo = await ConductorService.saldo();
-      if (_perfil != null) {
-        _perfil = Conductor(
-          id: _perfil!.id,
-          nombre: _perfil!.nombre,
-          dni: _perfil!.dni,
-          dniFotoUrl: _perfil!.dniFotoUrl,
-          licencia: _perfil!.licencia,
-          licenciaFotoUrl: _perfil!.licenciaFotoUrl,
-          fotoUrl: _perfil!.fotoUrl,
-          antecedentesFotoUrl: _perfil!.antecedentesFotoUrl,
-          antecedentesValido: _perfil!.antecedentesValido,
-          ratingPromedio: _perfil!.ratingPromedio,
-          viajesCompletados: _perfil!.viajesCompletados,
-          disponible: _perfil!.disponible,
-          aprobado: _perfil!.aprobado,
-          saldoCarreras: saldo,
-          saldoFecha: _perfil!.saldoFecha,
-        );
-      } else {
-        _perfil = Conductor(
-          id: 0,
-          nombre: '',
-          ratingPromedio: 5.0,
-          viajesCompletados: 0,
-          disponible: false,
-          aprobado: false,
-          saldoCarreras: saldo,
-        );
-      }
+      // Recarga el perfil completo (saldo + viajes completados + ingreso del
+      // dia) para que las metricas del Home se actualicen al completar un viaje.
+      _perfil = await ConductorService.perfil();
       notifyListeners();
     } catch (_) {}
   }

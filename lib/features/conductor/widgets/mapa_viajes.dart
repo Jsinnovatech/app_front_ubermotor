@@ -109,9 +109,19 @@ class _MapaViajesState extends State<MapaViajes> {
       if (tienePosicion)
         Marker(
           point: centro,
-          width: 44,
-          height: 44,
-          child: const Icon(Icons.two_wheeler, color: AppColors.yellow, size: 40),
+          width: 48,
+          height: 48,
+          child: const Icon(
+            Icons.two_wheeler,
+            color: AppColors.black,
+            size: 44,
+            shadows: [
+              Shadow(color: AppColors.yellow, offset: Offset(-1, -1)),
+              Shadow(color: AppColors.yellow, offset: Offset(1, -1)),
+              Shadow(color: AppColors.yellow, offset: Offset(-1, 1)),
+              Shadow(color: AppColors.yellow, offset: Offset(1, 1)),
+            ],
+          ),
         ),
     ];
 

@@ -216,33 +216,46 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.gray,
         elevation: 0,
-        title: const Text(
-          'HablaVas',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 20,
-            color: AppColors.black,
-            shadows: [
-              Shadow(color: AppColors.yellow, offset: Offset(-1, -1)),
-              Shadow(color: AppColors.yellow, offset: Offset(1, -1)),
-              Shadow(color: AppColors.yellow, offset: Offset(-1, 1)),
-              Shadow(color: AppColors.yellow, offset: Offset(1, 1)),
-              Shadow(color: AppColors.yellow, offset: Offset(0, 2), blurRadius: 1),
+        leadingWidth: 120,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 20),
+          child: Row(
+            children: const [
+              Icon(Icons.two_wheeler, color: AppColors.black, size: 26),
+              SizedBox(width: 6),
+              Text(
+                'HablaVas',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                  color: AppColors.black,
+                  shadows: [
+                    Shadow(color: AppColors.yellow, offset: Offset(-1, -1)),
+                    Shadow(color: AppColors.yellow, offset: Offset(1, -1)),
+                    Shadow(color: AppColors.yellow, offset: Offset(-1, 1)),
+                    Shadow(color: AppColors.yellow, offset: Offset(1, 1)),
+                    Shadow(color: AppColors.yellow, offset: Offset(0, 2), blurRadius: 1),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Mis viajes',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
+          // Foto de perfil del cliente a la altura del AppBar
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: GestureDetector(
+              onTap: _subirFotoPerfil,
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.yellow,
+                backgroundImage: _fotoUrl != null ? NetworkImage(_fotoUrl!) : null,
+                child: _fotoUrl == null
+                    ? const Icon(Icons.person, size: 22, color: AppColors.black)
+                    : null,
+              ),
             ),
-            icon: const Icon(Icons.history, color: AppColors.black),
-          ),
-          IconButton(
-            tooltip: 'Salir',
-            onPressed: () => context.read<AuthProvider>().cerrarSesion(),
-            icon: const Icon(Icons.logout, color: AppColors.black),
           ),
         ],
       ),
@@ -272,38 +285,6 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       icono: Icons.star,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const RankingScreen()),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: InkWell(
-                      onTap: _subirFotoPerfil,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.line, width: 1),
-                        ),
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: AppColors.yellowSoft,
-                              backgroundImage: _fotoUrl != null ? NetworkImage(_fotoUrl!) : null,
-                              child: _fotoUrl == null
-                                  ? const Icon(Icons.add_a_photo, size: 18, color: AppColors.black)
-                                  : null,
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Mi foto',
-                              style: TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w700),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),

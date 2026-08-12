@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 
 /// Excepcion tipada para errores de API: el backend siempre responde
 /// {"error": true, "message": "...", "error_code": "..."} en fallos.
@@ -23,6 +24,15 @@ class ApiClient {
   static Future<void> guardarToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
+  }
+
+  /// Valida que el token siga vigente contra /auth/me. Lanza si expiro o el
+  /// usuario fue desactivado (401/403). Lo usa AuthProvider al restaurar la
+  /// sesion para no dejar sesiones inactivas "logueadas".
+  static Future<void> me() async {
+    final token = await obtenerToken();
+    if (token == null) throw ApiException(statusCode: 401, message: 'Sin sesion');
+    await get(ApiConfig.me);
   }
 
   static Future<String?> obtenerToken() async {

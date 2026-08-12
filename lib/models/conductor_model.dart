@@ -14,6 +14,7 @@ class Conductor {
   final bool aprobado;
   final int saldoCarreras;
   final String? saldoFecha;
+  final double ingresoHoy;
 
   Conductor({
     required this.id,
@@ -31,6 +32,7 @@ class Conductor {
     required this.aprobado,
     required this.saldoCarreras,
     this.saldoFecha,
+    this.ingresoHoy = 0.0,
   });
 
   factory Conductor.desdeJson(Map<String, dynamic> json) {
@@ -50,6 +52,7 @@ class Conductor {
       aprobado: json['aprobado'] ?? false,
       saldoCarreras: json['saldo_carreras'] ?? 0,
       saldoFecha: json['saldo_fecha'],
+      ingresoHoy: (json['ingreso_hoy'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

@@ -11,8 +11,6 @@ import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
 import '../widgets/mapa_viajes.dart';
 import '../widgets/panel_carrera_nueva.dart';
-import 'calificar_screen.dart';
-import 'carrera_en_curso_screen.dart';
 import 'historial_viajes_screen.dart';
 import 'perfil_screen.dart';
 import 'recarga_screen.dart';
@@ -135,150 +133,81 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-              // Toggle Disponible
+              // Fila superior: Tus viajes | Tu saldo | Tu ingreso
+              Row(
+                children: [
+                  _metricaHome(
+                    label: 'Tus viajes',
+                    valor: '${provider.perfil?.viajesCompletados ?? 0}',
+                    icono: Icons.route,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const HistorialViajesScreen()),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _metricaHome(
+                    label: 'Tu saldo',
+                    valor: '$saldo',
+                    icono: Icons.speed,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const RecargaScreen()),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _metricaHome(
+                    label: 'Tu ingreso',
+                    valor: 'S/ ${(provider.perfil?.ingresoHoy ?? 0).toStringAsFixed(2)}',
+                    icono: Icons.payments,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const RecargaScreen()),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Toggle Disponible delgado y estetico
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.line, width: 1),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
                 ),
                 child: Row(
                   children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: disponible ? AppColors.green : AppColors.textDim,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            disponible ? 'Disponible' : 'Offline',
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.black),
-                          ),
-                          Text(
-                            disponible ? 'Buscando viajes cercanos...' : 'Activa el modo para recibir viajes',
-                            style: const TextStyle(fontSize: 16, color: AppColors.textDim),
-                          ),
-                        ],
+                      child: Text(
+                        disponible ? 'Disponible · buscando viajes' : 'Offline · activa para recibir viajes',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: disponible ? AppColors.black : AppColors.textDim,
+                        ),
                       ),
                     ),
                     Switch(
                       value: disponible,
                       activeTrackColor: AppColors.yellow,
                       activeThumbColor: AppColors.white,
+                      inactiveThumbColor: AppColors.textDim,
                       onChanged: (v) => provider.cambiarDisponibilidad(disponible: v),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              // Badge Objetivo Diario (saldo)
-              InkWell(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const RecargaScreen()),
-                ),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.yellow,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.speed, color: AppColors.black, size: 32),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'OBJETIVO DIARIO',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: AppColors.black),
-                            ),
-                            Text(
-                              'Te quedan $saldo carreras',
-                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.black),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.add_circle, color: AppColors.black),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Balance de Hoy
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.line, width: 1),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'BALANCE DE HOY',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: AppColors.textDim),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.gray,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.info, size: 14, color: AppColors.textDim),
-                              SizedBox(width: 4),
-                              Text(
-                                'No acumulable',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textDim),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'S/ 0.00',
-                      style: TextStyle(fontSize: 44, fontWeight: FontWeight.w900, color: AppColors.black),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _metricaMini('Viajes', '${provider.perfil?.viajesCompletados ?? 0}'),
-                        const SizedBox(width: 12),
-                        _metricaMini('Saldo', '$saldo'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const RecargaScreen()),
-                  ),
-                  icon: const Icon(Icons.add_circle, size: 20),
-                  label: const Text('Recargar carreras', style: TextStyle(fontWeight: FontWeight.w800)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Mapa con pines de los viajes disponibles
-              SizedBox(
-                height: 200,
+              // Mapa con pines de los viajes disponibles (mas grande)
+              Expanded(
+                flex: 3,
                 child: provider.viajesDisponibles.isEmpty
                     ? const Center(
                         child: Text(
@@ -296,7 +225,16 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                       ),
               ),
               const SizedBox(height: 12),
+              // Card de carrera activa: solo visible cuando hay viaje en curso
+              if (provider.viajeActivo != null)
+                _CardViajeActivo(
+                  viaje: provider.viajeActivo!,
+                  onCambio: () => context.read<ConductorProvider>().cargarViajeActivo(),
+                ),
+              const SizedBox(height: 12),
+              // Lista de viajes disponibles
               Expanded(
+                flex: 2,
                 child: provider.viajesDisponibles.isEmpty
                     ? const SizedBox.shrink()
                     : ListView.builder(
@@ -343,16 +281,10 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
   }
 
   /// Si el conductor ya tiene una carrera activa (recargó la app en medio de
-  /// un viaje, o el WS no estaba conectado), lo manda a la pantalla correcta.
+  /// un viaje, o el WS no estaba conectado), carga el card de carrera activa.
   Future<void> _revisarViajeActivo() async {
     final provider = context.read<ConductorProvider>();
     await provider.cargarViajeActivo();
-    final activo = provider.viajeActivo;
-    if (activo != null && mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => CarreraEnCursoScreen(viaje: activo)),
-      );
-    }
   }
 
   Future<void> _aceptarCarrera(Viaje viaje) async {
@@ -361,9 +293,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     try {
       await context.read<ConductorProvider>().aceptar(viaje.id);
       if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => CarreraEnCursoScreen(viaje: viaje)),
-      );
+      await context.read<ConductorProvider>().cargarViajeActivo();
     } catch (e) {
       if (!mounted) return;
       _mostrarError(e);
@@ -443,10 +373,9 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
               Navigator.of(ctx).pop();
               try {
                 await context.read<ConductorProvider>().aceptar(viaje.id);
-                if (!mounted) return;
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => CarreraEnCursoScreen(viaje: viaje)),
-                );
+                if (mounted) {
+                  await context.read<ConductorProvider>().cargarViajeActivo();
+                }
               } catch (e) {
                 if (mounted) _mostrarError(e);
               }
@@ -473,19 +402,38 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     );
   }
 
-  Widget _metricaMini(String label, String valor) {
+  Widget _metricaHome({
+    required String label,
+    required String valor,
+    required IconData icono,
+    VoidCallback? onTap,
+  }) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.gray,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            Text(valor, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.black)),
-            Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textDim, fontWeight: FontWeight.w600)),
-          ],
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.line, width: 1),
+          ),
+          child: Column(
+            children: [
+              Icon(icono, size: 20, color: AppColors.yellow),
+              const SizedBox(height: 4),
+              Text(
+                valor,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.black),
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -554,10 +502,9 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                     onPressed: () async {
                       try {
                         await provider.aceptar(viaje.id);
-                        if (!mounted) return;
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => CarreraEnCursoScreen(viaje: viaje)),
-                        );
+                        if (mounted) {
+                          await context.read<ConductorProvider>().cargarViajeActivo();
+                        }
                       } catch (e) {
                         if (mounted) _mostrarError(e);
                       }
@@ -650,6 +597,146 @@ class _BottomNav extends StatelessWidget {
           );
         }).toList(),
       ),
+    );
+  }
+}
+
+/// Card del viaje activo del conductor, visible SOLO cuando hay una carrera
+/// en curso. Muestra el boton segun el estado y se refresca solo.
+class _CardViajeActivo extends StatefulWidget {
+  final Viaje viaje;
+  final VoidCallback onCambio;
+  const _CardViajeActivo({required this.viaje, required this.onCambio});
+
+  @override
+  State<_CardViajeActivo> createState() => _CardViajeActivoState();
+}
+
+class _CardViajeActivoState extends State<_CardViajeActivo> {
+  late Viaje _viaje;
+  bool _trabajando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _viaje = widget.viaje;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _viaje;
+    final estado = v.estado;
+
+    final (titulo, color) = switch (estado) {
+      'asignado' => ('En camino al cliente', AppColors.blue),
+      'llegado' => ('Esperando al cliente', AppColors.yellow),
+      'en_curso' => ('En viaje al destino', AppColors.green),
+      _ => ('Carrera activa', AppColors.black),
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.two_wheeler, size: 20, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  titulo,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.black),
+                ),
+              ),
+              if (_trabajando)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.yellow),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _fila(Icons.place, v.origenDireccion ?? 'Origen'),
+          const SizedBox(height: 2),
+          _fila(Icons.sports_motorsports, v.destinoDireccion ?? 'Destino'),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 44,
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                foregroundColor: AppColors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _trabajando ? null : _accion,
+              child: Text(
+                switch (estado) {
+                  'asignado' => 'LLEGUÉ AL PUNTO',
+                  'llegado' => 'INICIAR VIAJE',
+                  'en_curso' => 'COMPLETAR VIAJE',
+                  _ => 'VER CARRERA',
+                },
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _accion() async {
+    final provider = context.read<ConductorProvider>();
+    setState(() => _trabajando = true);
+    try {
+      switch (_viaje.estado) {
+        case 'asignado':
+          final v = await provider.llegar(_viaje.id);
+          if (mounted) setState(() => _viaje = v);
+        case 'llegado':
+          final v = await provider.iniciar(_viaje.id);
+          if (mounted) setState(() => _viaje = v);
+        case 'en_curso':
+          await provider.completar(_viaje.id);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Viaje completado. ¡Gracias!')),
+          );
+          widget.onCambio();
+        default:
+          break;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _trabajando = false);
+    }
+  }
+
+  Widget _fila(IconData icono, String texto) {
+    return Row(
+      children: [
+        Icon(icono, size: 16, color: AppColors.yellow),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            texto,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.black),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/viaje_model.dart';
+import '../../../services/calificacion_service.dart';
 import '../../../services/realtime_service.dart';
 import '../../../services/viaje_service.dart';
 
@@ -56,9 +57,36 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
       final actual = await ViajeService.obtenerEstado(_viaje.id);
       if (!mounted) return;
       if (actual != null && actual.estado != _viaje.estado) {
+        final anterior = _viaje.estado;
         setState(() => _viaje = actual);
+        _avisarCambio(anterior, actual.estado);
       }
     } catch (_) {}
+  }
+
+  /// Avisa al cliente cuando el conductor llega o cuando termina el viaje.
+  void _avisarCambio(String anterior, String nuevo) {
+    if (nuevo == 'llegado' && anterior != 'llegado') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.yellow,
+          content: Text(
+            '🛵 Tu conductor llegó, sube al moto',
+            style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.black),
+          ),
+        ),
+      );
+    } else if (nuevo == 'completado' && anterior != 'completado') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.green,
+          content: Text(
+            '✅ Llegaste a tu destino, califica a tu conductor',
+            style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.white),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -175,12 +203,68 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
                   'S/ ${v.tarifa.toStringAsFixed(2)} · ${v.metodoPagoCliente}',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.black),
                 ),
+                if (v.estado == 'completado') ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.yellow,
+                        foregroundColor: AppColors.black,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: _calificar,
+                      icon: const Icon(Icons.star, size: 20),
+                      label: const Text('CALIFICAR CONDUCTOR', style: TextStyle(fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Abre el dialogo de estrellas para calificar al conductor del viaje.
+  Future<void> _calificar() async {
+    final puntaje = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Califica al conductor', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: const Text('¿Cómo estuvo tu viaje? Toca las estrellas.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancelar')),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (i) {
+              return IconButton(
+                iconSize: 32,
+                icon: Icon(i < 4 ? Icons.star_border : Icons.star, color: AppColors.yellow),
+                onPressed: () => Navigator.of(ctx).pop(i + 1),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+    if (puntaje == null || !mounted) return;
+
+    try {
+      await CalificacionService.calificar(viajeId: _viaje.id, puntaje: puntaje);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Calificación registrada: $puntaje estrellas')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''))),
+      );
+    }
   }
 
   IconData _iconoEstado(String estado) {

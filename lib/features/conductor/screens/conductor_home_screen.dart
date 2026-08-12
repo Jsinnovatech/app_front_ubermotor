@@ -218,25 +218,17 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Mapa con pines de los viajes disponibles (altura fija para
-              // que nunca se comprima a 0 en pantallas de movil)
+              // Mapa con la ubicacion actual del conductor. Siempre se muestra
+              // (aunque no haya viajes), con los pines de viajes encima.
               SizedBox(
                 height: 280,
-                child: provider.viajesDisponibles.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No hay viajes disponibles ahora.\nBaja a actualizar.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textDim, fontWeight: FontWeight.w600),
-                        ),
-                      )
-                    : MapaViajes(
-                        viajes: provider.viajesDisponibles,
-                        latConductor: _miLat,
-                        lngConductor: _miLng,
-                        radioKm: 5,
-                        onViajeTap: (viaje) => _mostrarDetalleViaje(viaje),
-                      ),
+                child: MapaViajes(
+                  viajes: provider.viajesDisponibles,
+                  latConductor: _miLat,
+                  lngConductor: _miLng,
+                  radioKm: 5,
+                  onViajeTap: (viaje) => _mostrarDetalleViaje(viaje),
+                ),
               ),
               const SizedBox(height: 12),
               // Card de carrera activa: cuando hay viaje en curso, es el foco

@@ -54,6 +54,10 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
   void _conectarWebSocket() {
     _realtime.onViajeNuevo = (datos) {
       if (!mounted) return;
+      if (datos['id'] == null && datos['viaje_id'] == null) return;
+      if (datos['id'] == null && datos['viaje_id'] != null) {
+        datos['id'] = datos['viaje_id'];
+      }
       final provider = context.read<ConductorProvider>();
       final viaje = Viaje.desdeJson(datos);
       provider.agregarViajeRealtime(viaje);

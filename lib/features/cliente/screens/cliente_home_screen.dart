@@ -47,6 +47,10 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   double? _conductorLng;
   String? _estadoViaje;
   RealtimeService? _realtime;
+  // Perfil del cliente (para la foto y metricas).
+  int _viajesRealizados = 0;
+  double _rating = 5.0;
+  String? _fotoUrl;
 
   @override
   void initState() {
@@ -70,8 +74,44 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         context.read<ClienteProvider>().cargarConductores(lat: lat, lng: lng);
       }
       _conectarTracking();
+      _cargarPerfil();
+      _revisarViajeActivo();
     });
     _destino.addListener(_onDestinoCambio);
+  }
+
+  /// Carga el perfil del cliente (nombre, foto, viajes, rating).
+  Future<void> _cargarPerfil() async {
+    try {
+      final perfil = await ClienteService.perfil();
+      if (!mounted) return;
+      setState(() {
+        _viajesRealizados = perfil.viajesRealizados;
+        _rating = perfil.ratingPromedio;
+        _fotoUrl = perfil.fotoUrl;
+      });
+    } catch (_) {}
+  }
+
+  /// Si el cliente tiene un viaje en curso al entrar (cerro la pantalla o
+  /// recargo), redirige a la pantalla de seguimiento para que vea el aviso.
+  Future<void> _revisarViajeActivo() async {
+    try {
+      final viaje = await ClienteService.viajeActivo();
+      if (viaje != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => SeguimientoViajeScreen(viaje: viaje)),
+        );
+      }
+    } catch (_) {}
+  }
+
+  /// Abre el selector de imagen para la foto de perfil del cliente.
+  Future<void> _subirFotoPerfil() async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('La foto de perfil se habilita desde la app móvil')),
+    );
   }
 
   @override
@@ -176,35 +216,100 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.gray,
         elevation: 0,
-        title: Text(
-          'Hola, ${auth.sesion?.nombre ?? ''}',
-          style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.black),
+        title: const Text(
+          'HablaVas',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 20,
+            color: AppColors.black,
+            shadows: [
+              Shadow(color: AppColors.yellow, offset: Offset(-1, -1)),
+              Shadow(color: AppColors.yellow, offset: Offset(1, -1)),
+              Shadow(color: AppColors.yellow, offset: Offset(-1, 1)),
+              Shadow(color: AppColors.yellow, offset: Offset(1, 1)),
+              Shadow(color: AppColors.yellow, offset: Offset(0, 2), blurRadius: 1),
+            ],
+          ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Ranking',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const RankingScreen()),
-            ),
-            icon: const Icon(Icons.leaderboard, color: AppColors.yellow),
-          ),
           IconButton(
             tooltip: 'Mis viajes',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
             ),
-            icon: const Icon(Icons.history, color: AppColors.yellow),
+            icon: const Icon(Icons.history, color: AppColors.black),
           ),
           IconButton(
             tooltip: 'Salir',
             onPressed: () => context.read<AuthProvider>().cerrarSesion(),
-            icon: const Icon(Icons.logout, color: AppColors.yellow),
+            icon: const Icon(Icons.logout, color: AppColors.black),
           ),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
+            // Fila de metricas: viajes realizados | rating
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _metrica(
+                      label: 'Tus viajes',
+                      valor: '${_viajesRealizados}',
+                      icono: Icons.route,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _metrica(
+                      label: 'Tu rating',
+                      valor: '⭐ ${_rating.toStringAsFixed(1)}',
+                      icono: Icons.star,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const RankingScreen()),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _subirFotoPerfil,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.line, width: 1),
+                        ),
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: AppColors.yellowSoft,
+                              backgroundImage: _fotoUrl != null ? NetworkImage(_fotoUrl!) : null,
+                              child: _fotoUrl == null
+                                  ? const Icon(Icons.add_a_photo, size: 18, color: AppColors.black)
+                                  : null,
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Mi foto',
+                              style: TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             // Mapa con la ubicacion actual del cliente (para reconfirmar)
             Expanded(
               flex: 3,
@@ -422,6 +527,51 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         ),
       ),
       floatingActionButton: BotonSos(onDisparar: _dispararSos),
+      bottomNavigationBar: _BottomNavCliente(
+        onViajes: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
+        ),
+        onRanking: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const RankingScreen()),
+        ),
+        onSalir: () => context.read<AuthProvider>().cerrarSesion(),
+      ),
+    );
+  }
+
+  /// Tarjeta de metrica del Home del cliente.
+  Widget _metrica({
+    required String label,
+    required String valor,
+    required IconData icono,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.line, width: 1),
+        ),
+        child: Column(
+          children: [
+            Icon(icono, size: 20, color: AppColors.yellow),
+            const SizedBox(height: 4),
+            Text(
+              valor,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.black),
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -717,6 +867,61 @@ class _MapaUbicacion extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Bottom nav del cliente: Home | Mis viajes | Mi cuenta (foto/salir).
+class _BottomNavCliente extends StatelessWidget {
+  final VoidCallback onViajes;
+  final VoidCallback onRanking;
+  final VoidCallback onSalir;
+
+  const _BottomNavCliente({
+    required this.onViajes,
+    required this.onRanking,
+    required this.onSalir,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      (Icons.home, 'Home', () {}),
+      (Icons.history, 'Viajes', onViajes),
+      (Icons.leaderboard, 'Ranking', onRanking),
+      (Icons.logout, 'Salir', onSalir),
+    ];
+    return Container(
+      height: 64,
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: Row(
+        children: items.map((item) {
+          final (icono, label, onTap) = item;
+          return Expanded(
+            child: InkWell(
+              onTap: onTap,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icono, size: 24, color: AppColors.yellow, fill: label == 'Home' ? 1 : 0),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.black,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }

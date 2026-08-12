@@ -1,10 +1,21 @@
 import '../core/config/api_config.dart';
 import '../core/network/api_client.dart';
+import '../models/cliente_perfil_model.dart';
 import '../models/conductor_disponible_model.dart';
 import '../models/viaje_model.dart';
 
 /// Unico service que sabe de /clientes/*.
 class ClienteService {
+  static Future<ClientePerfil> perfil() async {
+    final data = await ApiClient.get('${ApiConfig.baseUrl}/api/v1/clientes/perfil');
+    return ClientePerfil.desdeJson(data);
+  }
+
+  static Future<void> subirFoto() async {
+    // TODO: implementar con picker de imagen
+  }
+
+
   static Future<List<ConductorDisponible>> conductoresDisponibles({
     required double lat,
     required double lng,

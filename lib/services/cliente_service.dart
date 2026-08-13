@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import '../core/config/api_config.dart';
 import '../core/network/api_client.dart';
 import '../models/cliente_perfil_model.dart';
@@ -11,8 +12,18 @@ class ClienteService {
     return ClientePerfil.desdeJson(data);
   }
 
-  static Future<void> subirFoto() async {
-    // TODO: implementar con picker de imagen
+  /// Sube la foto de perfil del cliente a ImageKit.
+  static Future<void> subirFoto({
+    required Uint8List bytes,
+    required String nombreArchivo,
+  }) async {
+    await ApiClient.postFile(
+      '${ApiConfig.baseUrl}/api/v1/clientes/foto',
+      campo: 'archivo',
+      bytes: bytes,
+      nombreArchivo: nombreArchivo,
+      query: const {},
+    );
   }
 
 

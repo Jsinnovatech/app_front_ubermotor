@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -126,12 +127,30 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     } catch (_) {}
   }
 
-  /// Abre el selector de imagen para la foto de perfil del cliente.
+  /// Abre el selector de imagen y sube la foto de perfil del cliente.
   Future<void> _subirFotoPerfil() async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('La foto de perfil se habilita desde la app móvil')),
-    );
+    try {
+      final picker = ImagePicker();
+      final imagen = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1200);
+      if (imagen == null || !mounted) return;
+
+      final bytes = await imagen.readAsBytes();
+      final nombre = imagen.name.split('/').last;
+
+      await ClienteService.subirFoto(bytes: bytes, nombreArchivo: nombre);
+      if (!mounted) return;
+      await _cargarPerfil(); // refresca la foto en el AppBar
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto de perfil actualizada')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo subir la foto: $e')),
+      );
+    }
   }
 
   @override

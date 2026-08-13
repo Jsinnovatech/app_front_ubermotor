@@ -14,7 +14,6 @@ import '../../../services/sos_service.dart';
 import '../../../services/ubicacion_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
 import 'historial_cliente_screen.dart';
-import 'seguimiento_viaje_screen.dart';
 import '../../ranking/screens/ranking_screen.dart';
 
 /// Home del cliente replicado del diseno de Stitch (MotoRide):
@@ -99,8 +98,17 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     try {
       final viaje = await ClienteService.viajeActivo();
       if (viaje != null && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => SeguimientoViajeScreen(viaje: viaje)),
+        // Aviso compacto, no una pantalla completa: el cliente sigue en el
+        // Home y ve la confirmacion de que su viaje sigue en curso.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.black,
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              '🛺 Tienes un viaje en curso',
+              style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.yellow),
+            ),
+          ),
         );
       }
     } catch (_) {}
@@ -185,7 +193,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       _mensaje = null;
     });
     try {
-      final viaje = await ClienteService.solicitarViaje(
+      await ClienteService.solicitarViaje(
         origenLat: _miLat,
         origenLng: _miLng,
         destinoLat: _destinoLat!,
@@ -196,8 +204,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         metodoPago: _metodo,
       );
       if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => SeguimientoViajeScreen(viaje: viaje)),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.black,
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            '🛺 Viaje solicitado. Buscando un conductor...',
+            style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.yellow),
+          ),
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -260,32 +275,30 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Fila de metricas: viajes realizados | rating
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+            // Fila de metricas: viajes realizados | rating (estrechas)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: _metrica(
-                      label: 'Tus viajes',
-                      valor: '${_viajesRealizados}',
-                      icono: Icons.route,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
-                      ),
+                  _metrica(
+                    label: 'Tus viajes',
+                    valor: '${_viajesRealizados}',
+                    icono: Icons.route,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: _metrica(
-                      label: 'Tu rating',
-                      valor: '⭐ ${_rating.toStringAsFixed(1)}',
-                      icono: Icons.star,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const RankingScreen()),
-                      ),
+                  _metrica(
+                    label: 'Tu rating',
+                    valor: '⭐ ${_rating.toStringAsFixed(1)}',
+                    icono: Icons.star,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const RankingScreen()),
                     ),
                   ),
                 ],
@@ -487,9 +500,10 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                 ],
               ),
             ),
-            // Mapa con la ubicacion actual del cliente (para reconfirmar).
-            // Debajo del panel para que se vea en buena proporcion.
-            Expanded(
+            // Mapa con la ubicacion actual del cliente (altura fija para que
+            // siempre se vea en buena proporcion al hacer scroll).
+            SizedBox(
+              height: 300,
               child: _MapaUbicacion(
                 lat: _miLat,
                 lng: _miLng,
@@ -512,6 +526,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
       floatingActionButton: BotonSos(onDisparar: _dispararSos),
@@ -538,6 +553,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
+        width: 120,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: AppColors.white,

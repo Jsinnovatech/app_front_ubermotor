@@ -441,12 +441,12 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  // Fila compacta: tarifa + metodo de pago juntos
+                  // Fila compacta: tarifa (con mas espacio) + metodo de pago
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        flex: 2,
+                        flex: 3,
                         child: Row(
                           children: [
                             _botonStepper(Icons.remove, onTap: () {}),
@@ -454,7 +454,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                               child: TextField(
                                 textAlign: TextAlign.center,
                                 keyboardType: TextInputType.number,
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.black),
+                                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.black),
                                 decoration: InputDecoration(
                                   prefixText: 'S/ ',
                                   hintText: '3.00',
@@ -468,7 +468,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        flex: 3,
+                        flex: 2,
                         child: Row(
                           children: [
                             Expanded(child: _chipPago('Efectivo', Icons.payments)),
@@ -551,27 +551,36 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        width: 120,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        width: 90,
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.line, width: 1),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icono, size: 20, color: AppColors.yellow),
-            const SizedBox(height: 4),
-            Text(
-              valor,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.black),
-              overflow: TextOverflow.ellipsis,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icono, size: 15, color: AppColors.yellow),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    valor,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.black),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
             Text(
               label,
-              style: const TextStyle(fontSize: 11, color: AppColors.textDim, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 10, color: AppColors.textDim, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -619,7 +628,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       onTap: () => setState(() => _metodo = label.toLowerCase()),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: seleccionado ? AppColors.black : AppColors.white,
           borderRadius: BorderRadius.circular(8),
@@ -627,12 +636,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icono, size: 18, color: seleccionado ? AppColors.white : AppColors.black),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: seleccionado ? AppColors.white : AppColors.black),
+            Icon(icono, size: 16, color: seleccionado ? AppColors.white : AppColors.black),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: seleccionado ? AppColors.white : AppColors.black),
+              ),
             ),
           ],
         ),

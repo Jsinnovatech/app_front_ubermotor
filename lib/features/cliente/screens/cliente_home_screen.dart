@@ -30,6 +30,8 @@ class ClienteHomeScreen extends StatefulWidget {
 class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   final _origen = TextEditingController(text: 'Mi ubicación actual');
   final _destino = TextEditingController();
+  final _tarifa = TextEditingController(text: '3.00');
+  double _tarifaValor = 3.0;
   String _metodo = 'efectivo';
   bool _cargando = false;
   String? _mensaje;
@@ -77,6 +79,16 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       _revisarViajeActivo();
     });
     _destino.addListener(_onDestinoCambio);
+    _tarifa.addListener(_onTarifaManual);
+  }
+
+  /// Cuando el usuario escribe el monto a mano, actualiza _tarifaValor.
+  void _onTarifaManual() {
+    final texto = _tarifa.text.replaceAll(',', '.').trim();
+    final valor = double.tryParse(texto);
+    if (valor != null && valor >= 3.0) {
+      _tarifaValor = (valor * 100).round() / 100;
+    }
   }
 
   /// Carga el perfil del cliente (nombre, foto, viajes, rating).
@@ -126,6 +138,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   void dispose() {
     _origen.dispose();
     _destino.dispose();
+    _tarifa.dispose();
     _realtime?.desconectar();
     super.dispose();
   }
@@ -200,7 +213,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         destinoLng: _destinoLng!,
         origenDireccion: _origen.text.trim(),
         destinoDireccion: _destino.text.trim(),
-        tarifa: 3.0,
+        tarifa: _tarifaValor,
         metodoPago: _metodo,
       );
       if (!mounted) return;
@@ -441,39 +454,39 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  // Fila compacta: tarifa (con mas espacio) + metodo de pago
+                  // Dos columnas: precio (con stepper) | metodo de pago apilado
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      // Columna 1: input del precio con botones - y +
                       Expanded(
-                        flex: 3,
                         child: Row(
                           children: [
-                            _botonStepper(Icons.remove, onTap: () {}),
-                            const Expanded(
+                            _botonStepper(Icons.remove, onTap: _disminuirTarifa),
+                            Expanded(
                               child: TextField(
+                                controller: _tarifa,
                                 textAlign: TextAlign.center,
                                 keyboardType: TextInputType.number,
-                                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.black),
-                                decoration: InputDecoration(
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.black),
+                                decoration: const InputDecoration(
                                   prefixText: 'S/ ',
-                                  hintText: '3.00',
                                   border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
                                 ),
                               ),
                             ),
-                            _botonStepper(Icons.add, onTap: () {}),
+                            _botonStepper(Icons.add, onTap: _aumentarTarifa),
                           ],
                         ),
                       ),
                       const SizedBox(width: 10),
+                      // Columna 2: Efectivo y Yape apilados en dos filas
                       Expanded(
-                        flex: 2,
-                        child: Row(
+                        child: Column(
                           children: [
-                            Expanded(child: _chipPago('Efectivo', Icons.payments)),
-                            const SizedBox(width: 8),
-                            Expanded(child: _chipPago('Yape', Icons.qr_code_scanner)),
+                            _chipPagoFila('Efectivo', Icons.payments),
+                            const SizedBox(height: 6),
+                            _chipPagoFila('Yape', Icons.qr_code_scanner),
                           ],
                         ),
                       ),
@@ -608,27 +621,31 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     }
   }
 
-  Widget _botonStepper(IconData icono, {required VoidCallback onTap}) {    return Container(
-      width: 48,
-      height: 48,
+  Widget _botonStepper(IconData icono, {required VoidCallback onTap}) {
+    return Container(
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.line),
       ),
       child: IconButton(
+        padding: EdgeInsets.zero,
+        iconSize: 20,
         icon: Icon(icono, color: AppColors.black),
         onPressed: onTap,
       ),
     );
   }
 
-  Widget _chipPago(String label, IconData icono) {
+  Widget _chipPagoFila(String label, IconData icono) {
     final seleccionado = _metodo == label.toLowerCase();
     return GestureDetector(
       onTap: () => setState(() => _metodo = label.toLowerCase()),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(8),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
           color: seleccionado ? AppColors.black : AppColors.white,
           borderRadius: BorderRadius.circular(8),
@@ -636,7 +653,6 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icono, size: 16, color: seleccionado ? AppColors.white : AppColors.black),
             const SizedBox(width: 4),
@@ -650,6 +666,26 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         ),
       ),
     );
+  }
+
+  /// Sube la tarifa de a 0.50 (minimo 3.00).
+  void _aumentarTarifa() {
+    _cambiarTarifa(_tarifaValor + 0.50);
+  }
+
+  /// Baja la tarifa de a 0.50 (minimo 3.00).
+  void _disminuirTarifa() {
+    _cambiarTarifa(_tarifaValor - 0.50);
+  }
+
+  void _cambiarTarifa(double valor) {
+    final nuevo = (valor * 100).round() / 100;
+    final minimo = 3.0;
+    final final_ = nuevo < minimo ? minimo : nuevo;
+    setState(() {
+      _tarifaValor = final_;
+      _tarifa.text = final_.toStringAsFixed(2);
+    });
   }
 }
 

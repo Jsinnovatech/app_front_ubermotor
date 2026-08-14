@@ -45,4 +45,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - logo_icons/
+    - logo_icons/logo.webp

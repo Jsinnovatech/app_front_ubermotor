@@ -180,8 +180,8 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   /// Autocompletado del destino mientras se escribe (debounce simple).
   Future<void> _onDestinoCambio() async {
     final texto = _destino.text.trim();
-    if (texto.length < 3 || _destinoSeleccionado == texto) {
-      if (texto.length < 3) {
+    if (texto.isEmpty || _destinoSeleccionado == texto) {
+      if (texto.isEmpty) {
         if (mounted && _sugerencias.isNotEmpty) setState(() => _sugerencias = []);
       }
       return;

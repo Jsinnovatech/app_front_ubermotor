@@ -11,32 +11,48 @@ class SugerenciaLugar {
 
   factory SugerenciaLugar.desdeJson(Map<String, dynamic> json) {
     return SugerenciaLugar(
-      nombre: json['display_name'] ?? json['name'] ?? 'Ubicación',
-      lat: double.tryParse('${json['lat'] ?? '0'}') ?? 0,
-      lng: double.tryParse('${json['lon'] ?? '0'}') ?? 0,
+      nombre: json['formatted'] ?? json['name'] ?? 'Ubicación',
+      lat: (json['lat'] as num?)?.toDouble() ?? 0,
+      lng: (json['lon'] as num?)?.toDouble() ?? 0,
     );
   }
 }
 
-/// Geocodificacion con Nominatim (OpenStreetMap): gratis, sin API key.
-/// - Autocompletar direcciones mientras se escribe (usado en el campo destino).
+/// Geocodificacion con Geoapify (tipo Google, gratis 3000 req/dia):
+/// - Autocompletado desde 1 caracter mientras se escribe.
 /// - Reverse: convertir una coordenada GPS en direccion legible.
 class GeocodingService {
-  static const _base = 'https://nominatim.openstreetmap.org';
-  static const _userAgent = 'HablaVas/1.0';
+  static const String _key = '4848f78652284954aa22131303d67fdc';
+  static const _api = 'https://api.geoapify.com/v1/geocode';
 
   /// Sugerencias de lugares mientras el usuario escribe (autocomplete).
+  /// Geoapify responde desde 1 caracter, filtrado a Peru (bias hacia Lima).
   static Future<List<SugerenciaLugar>> autocompletar(String query, {double? lat, double? lng}) async {
-    if (query.trim().length < 3) return const [];
+    if (query.trim().isEmpty) return const [];
     try {
-      final resp = await http.get(
-        Uri.parse('$_base/search?q=${Uri.encodeQueryComponent(query.trim())}&format=json&limit=5&addressdetails=1&countrycodes=pe'),
-        headers: {'User-Agent': _userAgent},
-      );
+      final params = {
+        'text': query.trim(),
+        'apiKey': _key,
+        'limit': '5',
+        'lang': 'es',
+        'country': 'peru',
+        'bias': lat != null && lng != null ? 'proximity:$lng,$lat' : 'proximity:-77.02824,-12.04318',
+      };
+      final uri = Uri.parse('$_api/search').replace(queryParameters: params);
+      final resp = await http.get(uri);
       if (resp.statusCode != 200) return const [];
-      final lista = jsonDecode(resp.body) as List;
-      return lista
-          .map((e) => SugerenciaLugar.desdeJson(e as Map<String, dynamic>))
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final features = data['features'] as List? ?? [];
+      return features
+          .map((f) {
+            final props = (f as Map)['properties'] as Map<String, dynamic>? ?? {};
+            final geom = (f['geometry'] as Map?)?['coordinates'] as List? ?? [0, 0];
+            return SugerenciaLugar(
+              nombre: props['formatted'] ?? 'Ubicación',
+              lat: (geom[1] as num?)?.toDouble() ?? 0,
+              lng: (geom[0] as num?)?.toDouble() ?? 0,
+            );
+          })
           .where((s) => s.lat != 0)
           .toList();
     } catch (_) {
@@ -47,13 +63,20 @@ class GeocodingService {
   /// Convierte una coordenada en direccion legible ("Av. Larco 800, Miraflores").
   static Future<String?> reverse(double lat, double lng) async {
     try {
-      final resp = await http.get(
-        Uri.parse('$_base/reverse?lat=$lat&lon=$lng&format=json&addressdetails=1'),
-        headers: {'User-Agent': _userAgent},
-      );
+      final params = {
+        'lat': '$lat',
+        'lon': '$lng',
+        'apiKey': _key,
+        'lang': 'es',
+      };
+      final uri = Uri.parse('$_api/reverse').replace(queryParameters: params);
+      final resp = await http.get(uri);
       if (resp.statusCode != 200) return null;
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
-      return data['display_name'] as String?;
+      final features = data['features'] as List? ?? [];
+      if (features.isEmpty) return null;
+      final props = (features[0] as Map)['properties'] as Map<String, dynamic>? ?? {};
+      return props['formatted'] as String?;
     } catch (_) {
       return null;
     }

@@ -16,6 +16,11 @@ class AdminService {
     return data as Map<String, dynamic>;
   }
 
+  static Future<List<dynamic>> documentosConductor(int conductorId) async {
+    final data = await ApiClient.get('${ApiConfig.baseUrl}/api/v1/admin/conductores/$conductorId/documentos');
+    return data as List;
+  }
+
   static Future<void> cargarFoto(int conductorId, {required String campo, required Uint8List bytes, required String nombre}) async {
     final url = campo == 'moto'
         ? '${ApiConfig.baseUrl}/api/v1/admin/conductores/$conductorId/moto-foto'

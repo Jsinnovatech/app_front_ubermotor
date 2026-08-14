@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/navigation_service.dart';
+import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/conductor_provider.dart';
@@ -9,6 +10,7 @@ import 'providers/autoridad_provider.dart';
 
 import 'features/auth/screens/login_screen.dart';
 import 'features/conductor/screens/conductor_home_screen.dart';
+import 'features/conductor/screens/validacion_pendiente_screen.dart';
 import 'features/cliente/screens/cliente_home_screen.dart';
 import 'features/admin/screens/admin_shell_screen.dart';
 import 'features/autoridad/screens/autoridad_home_screen.dart';
@@ -59,7 +61,7 @@ class _Portero extends StatelessWidget {
 
     switch (auth.tipoUsuario) {
       case 'conductor':
-        return const ConductorHomeScreen();
+        return const _ConductorShell();
       case 'cliente':
         return const ClienteHomeScreen();
       case 'administrador':
@@ -70,5 +72,41 @@ class _Portero extends StatelessWidget {
       default:
         return Scaffold(body: Center(child: Text('Rol desconocido: ${auth.tipoUsuario}')));
     }
+  }
+}
+
+/// Shell del conductor: carga su perfil y decide si va al Home (aprobado) o
+/// a la pantalla de validacion (pendiente de aprobacion del admin).
+class _ConductorShell extends StatefulWidget {
+  const _ConductorShell();
+
+  @override
+  State<_ConductorShell> createState() => _ConductorShellState();
+}
+
+class _ConductorShellState extends State<_ConductorShell> {
+  bool _cargando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final provider = context.read<ConductorProvider>();
+      await provider.cargarPerfil();
+      if (mounted) setState(() => _cargando = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_cargando) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.yellow)));
+    }
+    final conductor = context.watch<ConductorProvider>().perfil;
+    final aprobado = conductor?.aprobado ?? false;
+    if (!aprobado) {
+      return const ValidacionPendienteScreen();
+    }
+    return const ConductorHomeScreen();
   }
 }

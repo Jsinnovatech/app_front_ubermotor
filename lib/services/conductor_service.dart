@@ -67,6 +67,7 @@ class ConductorService {
   /// Sube un documento (foto/dni/licencia/antecedentes) a ImageKit.
   static Future<Map<String, dynamic>> subirDocumento({
     required String tipo,
+    String? cara,
     required Uint8List bytes,
     required String nombreArchivo,
   }) async {
@@ -75,7 +76,7 @@ class ConductorService {
       campo: 'archivo',
       bytes: bytes,
       nombreArchivo: nombreArchivo,
-      query: {'tipo': tipo},
+      query: {'tipo': tipo, if (cara != null) 'cara': cara},
     );
     return data as Map<String, dynamic>;
   }

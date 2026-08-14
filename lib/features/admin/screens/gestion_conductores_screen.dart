@@ -66,6 +66,63 @@ class _GestionConductoresScreenState extends State<GestionConductoresScreen> {
     }
   }
 
+  /// Muestra todos los documentos del conductor en un modal para que el admin
+  /// los revise antes de aprobarlo.
+  Future<void> _verDocumentos(int conductorId) async {
+    try {
+      final docs = await AdminService.documentosConductor(conductorId);
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Documentos del conductor', style: TextStyle(fontWeight: FontWeight.w900)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: docs.isEmpty
+                ? const Text('Sin documentos subidos.', textAlign: TextAlign.center)
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: docs.map((d) {
+                      final tipo = d['tipo'] as String? ?? '';
+                      final cara = d['cara'] as String?;
+                      final url = d['url'] as String? ?? '';
+                      final label = cara != null ? '${tipo.toUpperCase()} — $cara' : tipo.toUpperCase();
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: InkWell(
+                          onTap: () => showDialog<void>(
+                            context: ctx,
+                            builder: (_) => Dialog(
+                              child: Image.network(url, fit: BoxFit.contain),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.photo, color: AppColors.yellow),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                              ),
+                              const Icon(Icons.open_in_full, size: 16, color: AppColors.textDim),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cerrar')),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _mensaje = e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -153,6 +210,11 @@ class _GestionConductoresScreenState extends State<GestionConductoresScreen> {
                 icono: Icons.two_wheeler,
                 etiqueta: 'Foto moto',
                 alTocar: () => _cargarFoto(id, 'Foto de la moto', 'moto'),
+              ),
+              _botonAccion(
+                icono: Icons.folder_open,
+                etiqueta: 'Documentos',
+                alTocar: () => _verDocumentos(id),
               ),
               _botonAccion(
                 icono: aprobado ? Icons.block : Icons.check_circle,

@@ -96,24 +96,50 @@ class _AutoridadHomeScreenState extends State<AutoridadHomeScreen> {
                 ],
               ),
             )
-          : Column(
+          : Stack(
               children: [
-                // Mapa épico: faros, cliente y moto en movimiento
-                Expanded(
-                  flex: 5,
+                // Mapa épico a pantalla completa: faros, cliente y moto en movimiento
+                Positioned.fill(
                   child: _MapaSos(
                     alerta: alerta,
                     motoLat: provider.motoLat,
                     motoLng: provider.motoLng,
                   ),
                 ),
-                // Panel de datos con fotos
-                Expanded(
-                  flex: 5,
-                  child: _PanelSos(
-                    alerta: alerta,
-                    onMarcar: () => context.read<AutoridadProvider>().cerrarAlerta(alerta.id),
-                  ),
+                // Panel de datos con fotos en sheet deslizante (estilo InDrive)
+                DraggableScrollableSheet(
+                  initialChildSize: 0.35,
+                  minChildSize: 0.25,
+                  maxChildSize: 0.8,
+                  snap: true,
+                  snapSizes: const [0.35, 0.6],
+                  builder: (context, scrollController) {
+                    return Container(
+                      decoration: const BoxDecoration(
+                        color: AppColors.black,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 10)],
+                      ),
+                      child: ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 48,
+                              height: 5,
+                              decoration: BoxDecoration(color: AppColors.textDim, borderRadius: BorderRadius.circular(999)),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _PanelSos(
+                            alerta: alerta,
+                            onMarcar: () => context.read<AutoridadProvider>().cerrarAlerta(alerta.id),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

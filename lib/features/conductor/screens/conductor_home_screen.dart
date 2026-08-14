@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/boton_sos.dart';
@@ -9,6 +10,7 @@ import '../../../models/viaje_model.dart';
 import '../../../services/ubicacion_service.dart';
 import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
+import '../../../services/viaje_service.dart';
 import '../widgets/mapa_viajes.dart';
 import '../widgets/panel_carrera_nueva.dart';
 import 'historial_viajes_screen.dart';
@@ -30,6 +32,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
   double? _miLat;
   double? _miLng;
   Viaje? _carreraPendiente;
+  List<LatLng> _rutaActiva = [];
   final _realtime = RealtimeService();
 
   @override
@@ -227,6 +230,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                   latConductor: _miLat,
                   lngConductor: _miLng,
                   radioKm: 5,
+                  ruta: _rutaActiva,
                   onViajeTap: (viaje) => _mostrarDetalleViaje(viaje),
                 ),
               ),
@@ -294,6 +298,25 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
   Future<void> _revisarViajeActivo() async {
     final provider = context.read<ConductorProvider>();
     await provider.cargarViajeActivo();
+    await _cargarRutaActiva();
+  }
+
+  /// Carga la ruta origen->destino del viaje activo (linea por calles).
+  Future<void> _cargarRutaActiva() async {
+    final activo = context.read<ConductorProvider>().viajeActivo;
+    if (activo == null) {
+      if (mounted) setState(() => _rutaActiva = []);
+      return;
+    }
+    try {
+      final puntos = await ViajeService.ruta(activo.id);
+      if (!mounted) return;
+      setState(() {
+        _rutaActiva = puntos
+            .map((p) => LatLng(p['lat']!, p['lng']!))
+            .toList();
+      });
+    } catch (_) {}
   }
 
   Future<void> _aceptarCarrera(Viaje viaje) async {
@@ -303,6 +326,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
       await context.read<ConductorProvider>().aceptar(viaje.id);
       if (!mounted) return;
       await context.read<ConductorProvider>().cargarViajeActivo();
+      await _cargarRutaActiva();
     } catch (e) {
       if (!mounted) return;
       _mostrarError(e);

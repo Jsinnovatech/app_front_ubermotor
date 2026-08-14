@@ -17,6 +17,7 @@ class MapaViajes extends StatefulWidget {
   final double? latConductor;
   final double? lngConductor;
   final double radioKm;
+  final List<LatLng>? ruta;
 
   const MapaViajes({
     super.key,
@@ -25,6 +26,7 @@ class MapaViajes extends StatefulWidget {
     this.latConductor,
     this.lngConductor,
     this.radioKm = 5,
+    this.ruta,
   });
 
   @override
@@ -140,6 +142,17 @@ class _MapaViajesState extends State<MapaViajes> {
             userAgentPackageName: 'com.jsinnovatech.ubermotor',
           ),
           CircleLayer(circles: circuloRango),
+          // Ruta origen->destino del viaje activo (linea azul por calles)
+          if (widget.ruta != null && widget.ruta!.isNotEmpty)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: widget.ruta!,
+                  color: AppColors.blue,
+                  strokeWidth: 5,
+                ),
+              ],
+            ),
           MarkerLayer(markers: [...pinConductor, ...pines]),
         ],
       ),

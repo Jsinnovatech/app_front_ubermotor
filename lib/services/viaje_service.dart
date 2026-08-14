@@ -51,4 +51,13 @@ class ViajeService {
     final data = await ApiClient.get('${ApiConfig.baseUrl}/api/v1/viajes/$viajeId');
     return Viaje.desdeJson(data);
   }
+
+  /// Ruta real por calles del viaje (OSRM). Devuelve la lista de {lat, lng}.
+  static Future<List<Map<String, double>>> ruta(int viajeId) async {
+    final data = await ApiClient.get('${ApiConfig.baseUrl}/api/v1/viajes/$viajeId/ruta');
+    final puntos = (data as Map)['puntos'] as List? ?? [];
+    return puntos
+        .map((p) => {'lat': (p['lat'] as num).toDouble(), 'lng': (p['lng'] as num).toDouble()})
+        .toList();
+  }
 }

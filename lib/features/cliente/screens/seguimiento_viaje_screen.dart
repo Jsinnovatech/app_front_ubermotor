@@ -27,6 +27,7 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
   Timer? _timer;
   double? _conductorLat;
   double? _conductorLng;
+  List<LatLng> _ruta = [];
 
   @override
   void initState() {
@@ -42,7 +43,21 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
       });
     };
     _realtime.conectarCliente();
+    _cargarRuta();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _refrescarEstado());
+  }
+
+  /// Carga la ruta origen->destino (OSRM) para dibujarla en el mapa.
+  Future<void> _cargarRuta() async {
+    try {
+      final puntos = await ViajeService.ruta(_viaje.id);
+      if (!mounted) return;
+      setState(() {
+        _ruta = puntos
+            .map((p) => LatLng(p['lat']!, p['lng']!))
+            .toList();
+      });
+    } catch (_) {}
   }
 
   @override
@@ -154,6 +169,17 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.jsinnovatech.ubermotor',
                 ),
+                // Ruta origen->destino (linea azul por calles)
+                if (_ruta.isNotEmpty)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: _ruta,
+                        color: AppColors.blue,
+                        strokeWidth: 5,
+                      ),
+                    ],
+                  ),
                 MarkerLayer(
                   markers: [
                     Marker(

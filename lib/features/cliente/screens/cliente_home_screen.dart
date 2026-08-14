@@ -53,6 +53,8 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   int _viajesRealizados = 0;
   double _rating = 5.0;
   String? _fotoUrl;
+  int _centrarKey = 0;
+  final _sheetController = DraggableScrollableController();
 
   @override
   void initState() {
@@ -306,61 +308,88 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-            // Fila de metricas: viajes realizados | rating (estrechas)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _metrica(
-                    label: 'Tus viajes',
-                    valor: '${_viajesRealizados}',
-                    icono: Icons.route,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  _metrica(
-                    label: 'Tu rating',
-                    valor: '⭐ ${_rating.toStringAsFixed(1)}',
-                    icono: Icons.star,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const RankingScreen()),
-                    ),
-                  ),
-                ],
-              ),
+      body: Stack(
+        children: [
+          // Mapa a pantalla completa detras del sheet (estilo InDrive)
+          Positioned.fill(
+            child: _MapaUbicacion(
+              lat: _miLat,
+              lng: _miLng,
+              ubicacionCargada: _ubicacionCargada,
+              conductorLat: _conductorLat,
+              conductorLng: _conductorLng,
+              centrarKey: _centrarKey,
             ),
-            // Panel de solicitud
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, -4))],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 48,
-                      height: 4,
-                      decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(999)),
+          ),
+          // Boton flotante "Mi ubicacion": centra la camara en el GPS
+          Positioned(
+            right: 16,
+            top: 16,
+            child: FloatingActionButton.small(
+              heroTag: 'btn_ubicacion',
+              backgroundColor: AppColors.white,
+              foregroundColor: AppColors.blue,
+              onPressed: _centrarEnMiUbicacion,
+              child: const Icon(Icons.my_location),
+            ),
+          ),
+          // Panel deslizante: tarjeta 35% <-> pantalla completa 85% (snap)
+          DraggableScrollableSheet(
+            controller: _sheetController,
+            initialChildSize: 0.42,
+            minChildSize: 0.25,
+            maxChildSize: 0.9,
+            snap: true,
+            snapSizes: const [0.42, 0.9],
+            builder: (context, scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                ),
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  children: [
+                    // Manija de arrastre
+                    Center(
+                      child: Container(
+                        width: 48,
+                        height: 5,
+                        decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(999)),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    '¿A dónde vamos?',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.black),
-                  ),
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
+                    // Fila de metricas: viajes | rating
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _metrica(
+                          label: 'Tus viajes',
+                          valor: '${_viajesRealizados}',
+                          icono: Icons.route,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _metrica(
+                          label: 'Tu rating',
+                          valor: '⭐ ${_rating.toStringAsFixed(1)}',
+                          icono: Icons.star,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const RankingScreen()),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      '¿A dónde vamos?',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.black),
+                    ),
+                    const SizedBox(height: 10),
                   // Linea conectora origen/destino
                   IntrinsicHeight(
                     child: Row(
@@ -409,6 +438,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                               TextField(
                                 controller: _destino,
                                 style: const TextStyle(fontSize: 16, color: AppColors.black),
+                                onTap: _expandirSheet,
                                 decoration: const InputDecoration(
                                   hintText: 'Buscar destino',
                                   border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
@@ -529,37 +559,26 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       child: Text(_cargando ? 'Solicitando...' : 'Pedir viaje'),
                     ),
                   ),
-                ],
-              ),
-            ),
-            // Mapa con la ubicacion actual del cliente (altura fija para que
-            // siempre se vea en buena proporcion al hacer scroll).
-            SizedBox(
-              height: 300,
-              child: _MapaUbicacion(
-                lat: _miLat,
-                lng: _miLng,
-                ubicacionCargada: _ubicacionCargada,
-                conductorLat: _conductorLat,
-                conductorLng: _conductorLng,
-              ),
-            ),
-            // Motos disponibles cerca
-            _MotosCerca(
-              conductores: context.watch<ClienteProvider>().conductores,
-              onConductorTap: (c) => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: AppColors.white,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    const SizedBox(height: 18),
+                    // Motos disponibles cerca (dentro del sheet deslizante)
+                    _MotosCerca(
+                      conductores: context.watch<ClienteProvider>().conductores,
+                      onConductorTap: (c) => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: AppColors.white,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                        ),
+                        builder: (_) => DetalleConductorSheet(conductor: c),
+                      ),
+                    ),
+                  ],
                 ),
-                builder: (_) => DetalleConductorSheet(conductor: c),
-              ),
-            ),
-          ],
-        ),
-        ),
+              );
+            },
+          ),
+        ],
       ),
       floatingActionButton: BotonSos(onDisparar: _dispararSos),
       bottomNavigationBar: _BottomNavCliente(
@@ -620,11 +639,31 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     );
   }
 
+  /// Expande el panel deslizante al tocar el campo de destino (estilo InDrive).
+  void _expandirSheet() {
+    _sheetController.animateTo(
+      0.9,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  /// Centra la camara del mapa en la ubicacion actual del cliente.
+  Future<void> _centrarEnMiUbicacion() async {
+    final posicion = await UbicacionService.obtenerPosicionActual();
+    if (posicion == null || !mounted) return;
+    setState(() {
+      _miLat = posicion.latitude;
+      _miLng = posicion.longitude;
+      _ubicacionCargada = true;
+      _centrarKey++;
+    });
+  }
+
   Future<void> _dispararSos() async {
     if (!mounted) return;
     try {
-      await SosService.activar(lat: -12.0464, lng: -77.0428);
-      if (!mounted) return;
+      await SosService.activar(lat: -12.0464, lng: -77.0428);      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppColors.red,
@@ -841,12 +880,13 @@ class _TarjetaMoto extends StatelessWidget {
 /// Mapa de la ubicacion actual del cliente para reconfirmarla antes de pedir
 /// el viaje (OpenStreetMap, sin API key). Pin azul en la posicion actual.
 /// Si hay un conductor asignado, se muestra su pin (moto) moviendose en vivo.
-class _MapaUbicacion extends StatelessWidget {
+class _MapaUbicacion extends StatefulWidget {
   final double lat;
   final double lng;
   final bool ubicacionCargada;
   final double? conductorLat;
   final double? conductorLng;
+  final int centrarKey;
 
   const _MapaUbicacion({
     required this.lat,
@@ -854,11 +894,31 @@ class _MapaUbicacion extends StatelessWidget {
     required this.ubicacionCargada,
     this.conductorLat,
     this.conductorLng,
+    this.centrarKey = 0,
   });
 
   @override
+  State<_MapaUbicacion> createState() => _MapaUbicacionState();
+}
+
+class _MapaUbicacionState extends State<_MapaUbicacion> {
+  final MapController _mapController = MapController();
+
+  @override
+  void didUpdateWidget(covariant _MapaUbicacion oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Al pulsar "Mi ubicacion" (cambia centrarKey) recentra la camara.
+    if (oldWidget.centrarKey != widget.centrarKey &&
+        _mapController.camera != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.move(LatLng(widget.lat, widget.lng), 16);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (!ubicacionCargada) {
+    if (!widget.ubicacionCargada) {
       return Container(
         color: const Color(0xFFE2E3E0),
         alignment: Alignment.center,
@@ -868,17 +928,17 @@ class _MapaUbicacion extends StatelessWidget {
 
     final marcadores = <Marker>[
       Marker(
-        point: LatLng(lat, lng),
+        point: LatLng(widget.lat, widget.lng),
         width: 40,
         height: 40,
         child: const Icon(Icons.my_location, color: AppColors.blue, size: 40),
       ),
     ];
     // Pin del conductor en vivo (tracking del viaje)
-    if (conductorLat != null && conductorLng != null) {
+    if (widget.conductorLat != null && widget.conductorLng != null) {
       marcadores.add(
         Marker(
-          point: LatLng(conductorLat!, conductorLng!),
+          point: LatLng(widget.conductorLat!, widget.conductorLng!),
           width: 44,
           height: 44,
           child: const Icon(Icons.sports_motorsports, color: AppColors.green, size: 44),
@@ -886,14 +946,15 @@ class _MapaUbicacion extends StatelessWidget {
       );
     }
 
-    final hayConductor = conductorLat != null && conductorLng != null;
+    final hayConductor = widget.conductorLat != null && widget.conductorLng != null;
 
     return Stack(
       children: [
         Positioned.fill(
           child: FlutterMap(
+            mapController: _mapController,
             options: MapOptions(
-              initialCenter: LatLng(lat, lng),
+              initialCenter: LatLng(widget.lat, widget.lng),
               initialZoom: 15,
               interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
             ),
@@ -907,7 +968,7 @@ class _MapaUbicacion extends StatelessWidget {
               CircleLayer(
                 circles: [
                   CircleMarker(
-                    point: LatLng(lat, lng),
+                    point: LatLng(widget.lat, widget.lng),
                     radius: 1000, // 1km en metros
                     useRadiusInMeter: true,
                     color: AppColors.yellow.withOpacity(0.10),

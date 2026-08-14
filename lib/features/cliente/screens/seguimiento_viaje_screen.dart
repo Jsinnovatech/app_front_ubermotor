@@ -130,34 +130,10 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
         ),
         iconTheme: const IconThemeData(color: AppColors.yellow),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: color,
-            child: Row(
-              children: [
-                Icon(_iconoEstado(estado), color: AppColors.black, size: 30),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        titulo,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppColors.black),
-                      ),
-                      Text(
-                        subtitulo,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.black),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
+          // Mapa a pantalla completa (estilo InDrive)
+          Positioned.fill(
             child: FlutterMap(
               options: MapOptions(
                 initialCenter: LatLng(conductorLat, conductorLng),
@@ -199,28 +175,77 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(color: AppColors.white, border: Border(top: BorderSide(color: AppColors.line))),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (v.conductorNombre != null)
-                  Row(
-                    children: [
-                      Icon(v.conductorFotoUrl != null ? Icons.person : Icons.person, size: 18, color: AppColors.yellow),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '${v.conductorNombre} · ⭐ ${v.conductorRating?.toStringAsFixed(1) ?? '—'}',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.black),
-                        ),
+          // Panel deslizante con el estado y los datos del viaje
+          DraggableScrollableSheet(
+            initialChildSize: 0.32,
+            minChildSize: 0.18,
+            maxChildSize: 0.8,
+            snap: true,
+            snapSizes: const [0.32, 0.6],
+            builder: (context, scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                ),
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // Manija de arrastre
+                    Center(
+                      child: Container(
+                        width: 48,
+                        height: 5,
+                        decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(999)),
                       ),
-                      if (v.motoDescripcion != null)
-                        Text(v.motoDescripcion!, style: const TextStyle(fontSize: 13, color: AppColors.textDim)),
-                    ],
-                  ),
-                const SizedBox(height: 8),
+                    ),
+                    const SizedBox(height: 12),
+                    // Banner de estado
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+                      child: Row(
+                        children: [
+                          Icon(_iconoEstado(estado), color: AppColors.black, size: 30),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  titulo,
+                                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppColors.black),
+                                ),
+                                Text(
+                                  subtitulo,
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.black),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // Datos del conductor
+                    if (v.conductorNombre != null)
+                      Row(
+                        children: [
+                          Icon(v.conductorFotoUrl != null ? Icons.person : Icons.person, size: 18, color: AppColors.yellow),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${v.conductorNombre} · ⭐ ${v.conductorRating?.toStringAsFixed(1) ?? '—'}',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.black),
+                            ),
+                          ),
+                          if (v.motoDescripcion != null)
+                            Text(v.motoDescripcion!, style: const TextStyle(fontSize: 13, color: AppColors.textDim)),
+                        ],
+                      ),
+                    const SizedBox(height: 8),
                 _fila(Icons.place, v.origenDireccion ?? 'Origen'),
                 const SizedBox(height: 4),
                 _fila(Icons.sports_motorsports, v.destinoDireccion ?? 'Destino'),
@@ -246,8 +271,10 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
                     ),
                   ),
                 ],
-              ],
-            ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),

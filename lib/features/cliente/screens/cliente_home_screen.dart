@@ -658,6 +658,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       _ubicacionCargada = true;
       _centrarKey++;
     });
+    context.read<ClienteProvider>().cargarConductores(lat: posicion.latitude, lng: posicion.longitude);
   }
 
   Future<void> _dispararSos() async {

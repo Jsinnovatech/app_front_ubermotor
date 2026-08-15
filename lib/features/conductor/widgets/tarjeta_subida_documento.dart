@@ -54,6 +54,41 @@ class _TarjetaSubidaDocumentoState extends State<TarjetaSubidaDocumento> {
 
   bool get _tieneFoto => _previewLocal != null || widget.urlPreview != null;
 
+  /// Abre la foto a pantalla completa (sin disparar el reemplazo).
+  void _verEnGrande() {
+    final image = _previewLocal != null
+        ? Image.memory(_previewLocal!)
+        : widget.urlPreview != null
+            ? Image.network(widget.urlPreview!)
+            : null;
+    if (image == null || !mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: Colors.black87,
+            child: Stack(
+              children: [
+                Center(child: image),
+                const Positioned(
+                  top: 16,
+                  right: 16,
+                  child: Icon(Icons.close, color: Colors.white, size: 32),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -67,18 +102,36 @@ class _TarjetaSubidaDocumentoState extends State<TarjetaSubidaDocumento> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: SizedBox(
-                height: 110,
-                width: double.infinity,
-                child: _previewLocal != null
-                    ? Image.memory(_previewLocal!, fit: BoxFit.cover)
-                    : widget.urlPreview != null
-                        ? Image.network(widget.urlPreview!, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _placeholderArea())
-                        : _placeholderArea(),
-              ),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: SizedBox(
+                    height: 110,
+                    width: double.infinity,
+                    child: _previewLocal != null
+                        ? Image.memory(_previewLocal!, fit: BoxFit.cover)
+                        : widget.urlPreview != null
+                            ? Image.network(widget.urlPreview!, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _placeholderArea())
+                            : _placeholderArea(),
+                  ),
+                ),
+                // Icono para ver la foto en grande (sin reemplazarla)
+                if (_tieneFoto)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: GestureDetector(
+                      onTap: _verEnGrande,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                        child: const Icon(Icons.visibility, size: 16, color: Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

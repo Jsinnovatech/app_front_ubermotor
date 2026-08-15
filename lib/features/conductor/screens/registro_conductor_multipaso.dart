@@ -288,25 +288,19 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
           ),
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 0.78,
-          children: [
-            for (final (tipo, cara, label, icono) in docs)
-              TarjetaSubidaDocumento(
-                etiqueta: label,
-                icono: icono,
-                alSubir: (bytes, nombre) async {
-                  await ConductorService.subirDocumento(tipo: tipo, cara: cara, bytes: bytes, nombreArchivo: nombre);
-                  if (mounted) setState(() => _subidos.add(label));
-                },
-              ),
-          ],
-        ),
+        // Tarjetas de ancho completo, una debajo de la otra
+        for (final (tipo, cara, label, icono) in docs) ...[
+          TarjetaSubidaDocumento(
+            key: ValueKey('$tipo-${cara ?? ''}-$label'),
+            etiqueta: label,
+            icono: icono,
+            alSubir: (bytes, nombre) async {
+              await ConductorService.subirDocumento(tipo: tipo, cara: cara, bytes: bytes, nombreArchivo: nombre);
+              if (mounted) setState(() => _subidos.add(label));
+            },
+          ),
+          const SizedBox(height: 10),
+        ],
         const SizedBox(height: 16),
         if (_error != null) ...[
           Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.red, fontWeight: FontWeight.w700)),

@@ -14,8 +14,11 @@ import 'features/conductor/screens/validacion_pendiente_screen.dart';
 import 'features/cliente/screens/cliente_home_screen.dart';
 import 'features/admin/screens/admin_shell_screen.dart';
 import 'features/autoridad/screens/autoridad_home_screen.dart';
+import 'services/onesignal_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PushService.inicializar();
   runApp(const HablaVasApp());
 }
 

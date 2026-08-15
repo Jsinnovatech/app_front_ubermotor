@@ -6,6 +6,13 @@ class ApiConfig {
     defaultValue: 'https://appbackubermotor-production.up.railway.app',
   );
 
+  // Notificaciones push OneSignal. El APP_ID se configura en el build:
+  // flutter build apk --dart-define=ONESIGNAL_APP_ID=<tu-app-id>
+  static const String onesignalAppId = String.fromEnvironment(
+    'ONESIGNAL_APP_ID',
+    defaultValue: '',
+  );
+
   // Auth
   static const String registro = '$baseUrl/auth/registro';
   static const String login = '$baseUrl/auth/login';

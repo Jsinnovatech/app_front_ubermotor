@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/network/api_client.dart';
 import '../models/sesion_model.dart';
 import '../services/auth_service.dart';
+import '../services/onesignal_service.dart';
 
 const _sesionKey = 'sesion_actual';
 
@@ -38,6 +39,7 @@ class AuthProvider extends ChangeNotifier {
           nombre: json['nombre'],
           tipoUsuario: json['tipo_usuario'],
         );
+        _vincularPush();
       } catch (_) {
         await ApiClient.limpiarToken();
         await prefs.remove(_sesionKey);
@@ -75,6 +77,7 @@ class AuthProvider extends ChangeNotifier {
     await ApiClient.guardarToken(sesion.accessToken);
     await _guardarSesionEnDisco(sesion);
     _sesion = sesion;
+    _vincularPush();
     notifyListeners();
   }
 
@@ -83,6 +86,7 @@ class AuthProvider extends ChangeNotifier {
     await ApiClient.guardarToken(sesion.accessToken);
     await _guardarSesionEnDisco(sesion);
     _sesion = sesion;
+    _vincularPush();
     notifyListeners();
   }
 
@@ -91,6 +95,17 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sesionKey);
     _sesion = null;
+    await PushService.cerrarSesion();
     notifyListeners();
+  }
+
+  /// Solo conductores y clientes reciben push (admin/autoridad no). Vincula el
+  /// dispositivo en OneSignal con el external id del usuario logueado.
+  void _vincularPush() {
+    final s = _sesion;
+    if (s == null) return;
+    final tipo = s.tipoUsuario;
+    if (tipo != 'conductor' && tipo != 'cliente') return;
+    PushService.vincularUsuario(usuarioId: s.usuarioId, tipo: tipo);
   }
 }

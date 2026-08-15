@@ -5,10 +5,9 @@ import '../../../providers/auth_provider.dart';
 import '../../conductor/screens/registro_conductor_multipaso.dart';
 import 'reset_password_screen.dart';
 
-/// Login principal de HablaVas: fondo oscuro con logo grande y llamativo,
-/// card de acceso, segmented de rol, recordar contraseña.
-/// - Conductor nuevo -> redirige al formulario MULTIPASO (datos + documentos).
-/// - Cliente / Admin / Policía -> registro directo.
+/// Login principal de HablaVas: fondo oscuro, logo grande y llamativo.
+/// Solo email + contraseña (el perfil se detecta por el correo al iniciar
+/// sesion). El boton "Registrarme" lleva al formulario multipaso del conductor.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,9 +18,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
-  final _nombre = TextEditingController();
-  bool _esRegistro = false;
-  String _tipoSeleccionado = 'conductor';
   bool _ocultarPassword = true;
   bool _cargando = false;
   String? _error;
@@ -30,35 +26,16 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _email.dispose();
     _password.dispose();
-    _nombre.dispose();
     super.dispose();
   }
 
   Future<void> _enviar() async {
-    final auth = context.read<AuthProvider>();
     setState(() {
       _cargando = true;
       _error = null;
     });
     try {
-      if (_esRegistro) {
-        // El conductor nuevo va al formulario multipaso (datos + documentos).
-        if (_tipoSeleccionado == 'conductor') {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const RegistroConductorMultipaso()),
-          );
-          if (mounted) setState(() => _cargando = false);
-          return;
-        }
-        await auth.registrar(
-          email: _email.text.trim(),
-          password: _password.text,
-          nombre: _nombre.text.trim(),
-          tipoUsuario: _tipoSeleccionado,
-        );
-      } else {
-        await auth.login(email: _email.text.trim(), password: _password.text);
-      }
+      await context.read<AuthProvider>().login(email: _email.text.trim(), password: _password.text);
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''));
     } finally {
@@ -112,10 +89,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  _esRegistro ? 'Crea tu cuenta' : 'Ingresa a tu cuenta',
+                const Text(
+                  'Ingresa a tu cuenta',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 17, color: Colors.white70),
+                  style: TextStyle(fontSize: 17, color: Colors.white70),
                 ),
                 const SizedBox(height: 24),
                 // Card blanca con los campos
@@ -129,15 +106,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _segmentedRoles(),
-                      const SizedBox(height: 14),
-                      if (_esRegistro) ...[
-                        _campo(_nombre, 'Nombre', Icons.person),
-                        const SizedBox(height: 12),
-                      ],
-                      _campo(_email, 'Email o teléfono', Icons.person),
+                      _campo(_email, 'Usuario o correo', Icons.person),
                       const SizedBox(height: 12),
-                      _campo(_password, 'Contraseña', Icons.lock, oculto: _ocultarPassword, sufijo: _botonOjo()),
+                      _campo(
+                        _password,
+                        'Contraseña',
+                        Icons.lock,
+                        oculto: _ocultarPassword,
+                        sufijo: IconButton(
+                          icon: Icon(_ocultarPassword ? Icons.visibility : Icons.visibility_off, color: AppColors.textDim),
+                          onPressed: () => setState(() => _ocultarPassword = !_ocultarPassword),
+                        ),
+                      ),
                       if (_error != null) ...[
                         const SizedBox(height: 12),
                         Text(
@@ -159,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(_cargando ? 'Espera...' : (_esRegistro ? 'Registrarme' : 'Ingresar')),
+                              Text(_cargando ? 'Espera...' : 'Ingresar'),
                               const SizedBox(width: 8),
                               const Icon(Icons.arrow_forward, size: 20),
                             ],
@@ -167,24 +147,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      if (!_esRegistro)
-                        TextButton(
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const ResetPasswordScreen()),
-                          ),
-                          child: const Text(
-                            '¿Olvidaste tu contraseña?',
-                            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.yellow),
-                          ),
-                        ),
                       TextButton(
-                        onPressed: () => setState(() {
-                          _esRegistro = !_esRegistro;
-                          _error = null;
-                        }),
-                        child: Text(
-                          _esRegistro ? 'Ya tengo cuenta — Ingresar' : 'No tengo cuenta — Registrarme',
-                          style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.black),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ResetPasswordScreen()),
+                        ),
+                        child: const Text(
+                          '¿Olvidaste tu contraseña?',
+                          style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.yellow),
+                        ),
+                      ),
+                      const Divider(height: 20),
+                      SizedBox(
+                        height: 48,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.black,
+                            side: const BorderSide(color: AppColors.line),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const RegistroConductorMultipaso()),
+                          ),
+                          child: const Text('Registrarme', style: TextStyle(fontWeight: FontWeight.w800)),
                         ),
                       ),
                     ],
@@ -194,50 +178,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _segmentedRoles() {
-    final opciones = [
-      ('conductor', 'Conductor'),
-      ('cliente', 'Cliente'),
-      ('administrador', 'Admin'),
-      ('policia', 'Policía'),
-    ];
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEEEEEB),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: opciones.map((opcion) {
-          final (tipo, etiqueta) = opcion;
-          final seleccionado = _tipoSeleccionado == tipo;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _tipoSeleccionado = tipo),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: seleccionado ? AppColors.black : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  etiqueta,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: seleccionado ? FontWeight.w800 : FontWeight.w600,
-                    color: seleccionado ? AppColors.yellow : AppColors.textDim,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }
@@ -252,13 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
         prefixIcon: Icon(icono, color: AppColors.textDim),
         suffixIcon: sufijo,
       ),
-    );
-  }
-
-  Widget _botonOjo() {
-    return IconButton(
-      icon: Icon(_ocultarPassword ? Icons.visibility : Icons.visibility_off, color: AppColors.textDim),
-      onPressed: () => setState(() => _ocultarPassword = !_ocultarPassword),
     );
   }
 }

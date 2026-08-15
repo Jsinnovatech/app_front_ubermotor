@@ -107,7 +107,7 @@ class _TarjetaSubidaDocumentoState extends State<TarjetaSubidaDocumento> {
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                   child: SizedBox(
-                    height: 110,
+                    height: 160,
                     width: double.infinity,
                     child: _previewLocal != null
                         ? Image.memory(_previewLocal!, fit: BoxFit.cover)

@@ -6,12 +6,13 @@ import '../../../services/conductor_service.dart';
 import '../widgets/tarjeta_subida_documento.dart';
 
 /// Registro del conductor en 5 TABS rectangulares (formulario epico):
-/// 1. Datos        -> nombre, correo, contraseña, repetir contraseña
-/// 2. DNI          -> frente + dorso
-/// 3. Brevete      -> frente + dorso
-/// 4. SOAT         -> foto del SOAT
-/// 5. Foto Moto    -> 3 fotos de la moto
-/// Tras completar, vuelve al login y queda pendiente de validacion del admin.
+/// 1. Datos -> nombre, correo, contraseña, repetir contraseña
+/// 2. DNI -> frente + dorso
+/// 3. Brevete -> frente + dorso
+/// 4. SOAT -> foto del SOAT
+/// 5. Moto -> 3 fotos de la moto
+/// Usa PageView con keepAlive para que las fotos subidas NO se pierdan al
+/// cambiar de pestaña. Tras completar, vuelve al login.
 class RegistroConductorMultipaso extends StatefulWidget {
   const RegistroConductorMultipaso({super.key});
 
@@ -20,6 +21,7 @@ class RegistroConductorMultipaso extends StatefulWidget {
 }
 
 class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso> {
+  final PageController _pageController = PageController();
   int _paso = 0;
   bool _cargando = false;
   bool _cuentaCreada = false;
@@ -33,18 +35,32 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
   bool _ocultarPassword = true;
   bool _ocultarPassword2 = true;
 
-  // Progreso de documentos por tab
-  final Set<String> _subidos = {};
-
   static const _tabs = ['Datos', 'DNI', 'Brevete', 'SOAT', 'Moto'];
 
   @override
   void dispose() {
+    _pageController.dispose();
     _nombre.dispose();
     _email.dispose();
     _password.dispose();
     _password2.dispose();
     super.dispose();
+  }
+
+  void _ir(int indice) {
+    if (indice > 0 && !_cuentaCreada) {
+      setState(() => _error = 'Primero crea tu cuenta en el paso 1');
+      return;
+    }
+    if (indice < 0) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _pageController.animateToPage(
+      indice,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
   }
 
   Future<void> _crearCuenta() async {
@@ -71,8 +87,8 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
       setState(() {
         _cargando = false;
         _cuentaCreada = true;
-        _paso = 1;
       });
+      _ir(1);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -82,7 +98,6 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
     }
   }
 
-  /// Al terminar: vuelve al login (la cuenta quedo pendiente de validacion).
   void _terminar() {
     context.read<AuthProvider>().cerrarSesion();
     Navigator.of(context).popUntil((r) => r.isFirst);
@@ -97,9 +112,7 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.yellow),
-          onPressed: _paso > 0
-              ? () => setState(() => _paso = _paso - 1)
-              : () => Navigator.of(context).pop(),
+          onPressed: () => _ir(_paso - 1),
         ),
         title: const Text(
           'Registro de Conductor',
@@ -108,7 +121,7 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
       ),
       body: Column(
         children: [
-          // Tabs rectangulares: Datos | DNI | Brevete | SOAT | Moto
+          // Tabs rectangulares horizontales
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: SizedBox(
@@ -124,14 +137,20 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
               ),
             ),
           ),
+          // PageView con keepAlive: las fotos no se pierden al cambiar de tab
           Expanded(
-            child: switch (_paso) {
-              0 => _tabDatos(),
-              1 => _tabDni(),
-              2 => _tabBrevete(),
-              3 => _tabSoat(),
-              _ => _tabMoto(),
-            },
+            child: PageView(
+              controller: _pageController,
+              physics: _cuentaCreada ? const NeverScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
+              onPageChanged: (i) => setState(() => _paso = i),
+              children: [
+                _KeepAlive(child: _tabDatos()),
+                _KeepAlive(child: _tabDni()),
+                _KeepAlive(child: _tabBrevete()),
+                _KeepAlive(child: _tabSoat()),
+                _KeepAlive(child: _tabMoto()),
+              ],
+            ),
           ),
         ],
       ),
@@ -141,13 +160,7 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
   Widget _tab(int indice) {
     final activo = _paso == indice;
     return GestureDetector(
-      onTap: () {
-        if (indice > 0 && !_cuentaCreada) {
-          setState(() => _error = 'Primero crea tu cuenta en el paso 1');
-          return;
-        }
-        setState(() => _paso = indice);
-      },
+      onTap: () => _ir(indice),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -246,35 +259,35 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
   }
 
   Widget _tabDni() {
-    return _gridDocumentos([
+    return _tabDocumentos([
       ('dni', 'frente', 'DNI — Frente', Icons.badge),
       ('dni', 'dorso', 'DNI — Dorso', Icons.badge_outlined),
-    ], 'DNI');
+    ], 'DNI', 1);
   }
 
   Widget _tabBrevete() {
-    return _gridDocumentos([
+    return _tabDocumentos([
       ('brevete', 'frente', 'Brevete — Frente', Icons.card_membership),
       ('brevete', 'dorso', 'Brevete — Dorso', Icons.card_membership_outlined),
-    ], 'Brevete');
+    ], 'Brevete', 2);
   }
 
   Widget _tabSoat() {
-    return _gridDocumentos([
+    return _tabDocumentos([
       ('soat', null, 'SOAT', Icons.verified_user),
-    ], 'SOAT');
+    ], 'SOAT', 3);
   }
 
   Widget _tabMoto() {
-    return _gridDocumentos([
+    return _tabDocumentos([
       ('moto', null, 'Foto Moto 1', Icons.two_wheeler),
       ('moto', null, 'Foto Moto 2', Icons.two_wheeler_outlined),
       ('moto', null, 'Foto Moto 3', Icons.two_wheeler),
-    ], 'Moto');
+    ], 'Moto', 4);
   }
 
-  /// Grid de tarjetas con preview para un grupo de documentos.
-  Widget _gridDocumentos(List<(String, String?, String, IconData)> docs, String titulo) {
+  /// Tarjetas de ancho completo (una por fila) + botones atras/siguiente.
+  Widget _tabDocumentos(List<(String, String?, String, IconData)> docs, String titulo, int indice) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -288,7 +301,6 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
           ),
         ),
         const SizedBox(height: 16),
-        // Tarjetas de ancho completo, una debajo de la otra
         for (final (tipo, cara, label, icono) in docs) ...[
           TarjetaSubidaDocumento(
             key: ValueKey('$tipo-${cara ?? ''}-$label'),
@@ -296,7 +308,7 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
             icono: icono,
             alSubir: (bytes, nombre) async {
               await ConductorService.subirDocumento(tipo: tipo, cara: cara, bytes: bytes, nombreArchivo: nombre);
-              if (mounted) setState(() => _subidos.add(label));
+              if (mounted) setState(() {});
             },
           ),
           const SizedBox(height: 10),
@@ -306,26 +318,49 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
           Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.red, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
         ],
-        SizedBox(
-          height: 52,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.black,
-              foregroundColor: AppColors.yellow,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        // Botones Anterior / Siguiente o Terminar
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.black,
+                    side: const BorderSide(color: AppColors.line),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _ir(indice - 1),
+                  child: const Text('← Atrás', style: TextStyle(fontWeight: FontWeight.w900)),
+                ),
+              ),
             ),
-            onPressed: () {
-              if (_paso < 4) {
-                setState(() => _paso = _paso + 1);
-              } else {
-                _terminar();
-              }
-            },
-            child: Text(
-              _paso < 4 ? 'SIGUIENTE →' : 'TERMINAR — Volver al login',
-              style: const TextStyle(fontWeight: FontWeight.w900),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.black,
+                    foregroundColor: AppColors.yellow,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    if (indice < 4) {
+                      _ir(indice + 1);
+                    } else {
+                      _terminar();
+                    }
+                  },
+                  child: Text(
+                    indice < 4 ? 'SIGUIENTE →' : 'TERMINAR — Volver al login',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ],
     );
@@ -346,5 +381,26 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+}
+
+/// Mantiene vivo el estado de cada pagina del PageView (las fotos no se
+/// pierden al cambiar de pestaña).
+class _KeepAlive extends StatefulWidget {
+  final Widget child;
+  const _KeepAlive({required this.child});
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

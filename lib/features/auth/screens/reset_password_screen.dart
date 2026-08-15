@@ -70,11 +70,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.gray,
+      backgroundColor: AppColors.black,
       appBar: AppBar(
-        backgroundColor: AppColors.gray,
+        backgroundColor: AppColors.black,
         elevation: 0,
-        title: const Text('Recuperar contraseña', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.black)),
+        title: const Text('Recuperar contraseña', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.yellow)),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -86,7 +86,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             decoration: BoxDecoration(
               color: AppColors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFD4C5AC), width: 1),
+              border: Border.all(color: AppColors.line, width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

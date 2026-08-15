@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/auth_provider.dart';
-import '../../conductor/screens/registro_conductor_multipaso.dart';
 import 'reset_password_screen.dart';
+import 'seleccion_tipo_cuenta_screen.dart';
 
 /// Login principal de HablaVas: fondo oscuro, logo grande y llamativo.
 /// Solo email + contraseña (el perfil se detecta por el correo al iniciar
@@ -166,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const RegistroConductorMultipaso()),
+                            MaterialPageRoute(builder: (_) => const SeleccionTipoCuentaScreen()),
                           ),
                           child: const Text('Registrarme', style: TextStyle(fontWeight: FontWeight.w800)),
                         ),

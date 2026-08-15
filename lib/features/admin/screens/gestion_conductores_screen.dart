@@ -66,56 +66,15 @@ class _GestionConductoresScreenState extends State<GestionConductoresScreen> {
     }
   }
 
-  /// Muestra todos los documentos del conductor en un modal para que el admin
-  /// los revise antes de aprobarlo.
+  /// Muestra los documentos del conductor en CAROUSEL (una foto a la vez con
+  /// flechas y contador) para que el admin los revise antes de aprobarlo.
   Future<void> _verDocumentos(int conductorId) async {
     try {
       final docs = await AdminService.documentosConductor(conductorId);
       if (!mounted) return;
       showDialog<void>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Documentos del conductor', style: TextStyle(fontWeight: FontWeight.w900)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: docs.isEmpty
-                ? const Text('Sin documentos subidos.', textAlign: TextAlign.center)
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: docs.map((d) {
-                      final tipo = d['tipo'] as String? ?? '';
-                      final cara = d['cara'] as String?;
-                      final url = d['url'] as String? ?? '';
-                      final label = cara != null ? '${tipo.toUpperCase()} — $cara' : tipo.toUpperCase();
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: InkWell(
-                          onTap: () => showDialog<void>(
-                            context: ctx,
-                            builder: (_) => Dialog(
-                              child: Image.network(url, fit: BoxFit.contain),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.photo, color: AppColors.yellow),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
-                              ),
-                              const Icon(Icons.open_in_full, size: 16, color: AppColors.textDim),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cerrar')),
-          ],
-        ),
+        builder: (ctx) => _CarruselDocumentos(docs: docs),
       );
     } catch (e) {
       if (!mounted) return;
@@ -244,6 +203,151 @@ class _GestionConductoresScreenState extends State<GestionConductoresScreen> {
       onPressed: alTocar,
       icon: Icon(icono, size: 16),
       label: Text(etiqueta, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+    );
+  }
+}
+
+/// Carrusel de documentos del conductor: muestra las fotos una a la vez con
+/// flechas de navegacion, contador y nombre de cada documento.
+class _CarruselDocumentos extends StatefulWidget {
+  final List<dynamic> docs;
+  const _CarruselDocumentos({required this.docs});
+
+  @override
+  State<_CarruselDocumentos> createState() => _CarruselDocumentosState();
+}
+
+class _CarruselDocumentosState extends State<_CarruselDocumentos> {
+  final PageController _controller = PageController();
+  int _indice = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.docs.isEmpty) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.folder_open, size: 48, color: AppColors.yellow),
+              const SizedBox(height: 12),
+              const Text('Sin documentos subidos', style: TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 16),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cerrar')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: double.maxFinite,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.folder_open, color: AppColors.yellow),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Documentos del conductor',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.black),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Foto actual en grande (PageView = carrusel)
+            SizedBox(
+              height: 320,
+              width: double.infinity,
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: widget.docs.length,
+                onPageChanged: (i) => setState(() => _indice = i),
+                itemBuilder: (_, i) {
+                  final d = widget.docs[i];
+                  final url = d['url'] as String? ?? '';
+                  final tipo = d['tipo'] as String? ?? '';
+                  final cara = d['cara'] as String?;
+                  final label = cara != null ? '${tipo.toUpperCase()} — $cara' : tipo.toUpperCase();
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.gray,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: Image.network(
+                            url,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 60, color: AppColors.textDim),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 8,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(999)),
+                              child: Text(
+                                label,
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Contador + flechas
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left, color: AppColors.black, size: 28),
+                  onPressed: _indice > 0
+                      ? () => _controller.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeOut)
+                      : null,
+                ),
+                Text(
+                  '${_indice + 1} / ${widget.docs.length}',
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.black),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right, color: AppColors.black, size: 28),
+                  onPressed: _indice < widget.docs.length - 1
+                      ? () => _controller.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeOut)
+                      : null,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

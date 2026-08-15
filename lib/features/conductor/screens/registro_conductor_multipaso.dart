@@ -99,8 +99,44 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
   }
 
   void _terminar() {
-    context.read<AuthProvider>().cerrarSesion();
-    Navigator.of(context).popUntil((r) => r.isFirst);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: const Icon(Icons.check_circle, color: AppColors.green, size: 56),
+        title: const Text(
+          '¡Registro completado!',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: const Text(
+          'Tu cuenta quedó registrada. Un administrador revisará tus documentos '
+          'y te notificará cuando esté aprobada para que puedas aceptar carreras.\n\n'
+          'Gracias por unirte a HablaVas.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13.5, height: 1.5),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.yellow,
+                foregroundColor: AppColors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                context.read<AuthProvider>().cerrarSesion();
+                Navigator.of(context).popUntil((r) => r.isFirst);
+              },
+              child: const Text('ENTENDIDO', style: TextStyle(fontWeight: FontWeight.w900)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

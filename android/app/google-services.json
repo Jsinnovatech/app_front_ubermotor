@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "102494926899",
+    "project_id": "app-hablavas",
+    "storage_bucket": "app-hablavas.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:102494926899:android:561613a0efae7702114b46",
+        "android_client_info": {
+          "package_name": "com.jsinnovatech.hablavas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtpr889QD52ro9Ame-xRelJgTKj00sSXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

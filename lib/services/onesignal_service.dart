@@ -1,34 +1,82 @@
+import 'package:flutter/material.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 import '../core/config/api_config.dart';
 import '../core/navigation_service.dart';
 
-/// Puente con OneSignal (push notifications).
+/// Puente centralizado con OneSignal (push notifications). Único lugar de la
+/// app que llama al SDK de OneSignal.
 ///
 /// El WebSocket solo entrega mensajes con la app abierta; el push despierta el
-/// telefono aunque la app este cerrada o en segundo plano. El dispositivo se
+/// teléfono aunque la app esté cerrada o en segundo plano. El dispositivo se
 /// vincula al usuario real con [vincularUsuario] (external id), asi el backend
 /// puede apuntar con `include_external_user_ids`.
 class PushService {
   static bool _inicializado = false;
 
-  /// Arranca OneSignal y pide permiso de notificaciones. Sin appId definido
-  /// (dart-define) no hace nada, asi la app no rompe en builds sin push.
+  /// Se conserva para que el observer del SDK (que se guarda débil) no se
+  /// libere y el diálogo de verificación pueda aparecer.
+  static OnPushSubscriptionChangeObserver? _observer;
+  static bool _dialogoMostrado = false;
+
+  /// Arranca OneSignal. No pide permiso aquí: el permiso se pide cuando el
+  /// usuario toca "Got it" en el diálogo de verificación (estándar OneSignal).
   static Future<void> inicializar() async {
     const appId = ApiConfig.onesignalAppId;
     if (appId.isEmpty) return;
 
     try {
       await OneSignal.initialize(appId);
-      await OneSignal.Notifications.requestPermission(true);
+      _observer = (stateChanges) {
+        _evaluarSuscripcion(stateChanges.current.id);
+      };
+      OneSignal.User.pushSubscription.addObserver(_observer!);
+      // El id puede ya estar asignado antes de registrar el observer: evalúalo
+      // de inmediato también.
+      _evaluarSuscripcion(OneSignal.User.pushSubscription.id);
+
       OneSignal.Notifications.addClickListener((event) {
-        final data = event.notification.additionalData;
-        _abrirPantallaPorPush(data);
+        _abrirPantallaPorPush(event.notification.additionalData);
       });
       _inicializado = true;
     } catch (_) {
       _inicializado = false;
     }
+  }
+
+  /// Muestra el diálogo de verificación una sola vez cuando el dispositivo ya
+  /// está registrado (id real asignado por el servidor, no el `local-`).
+  static void _evaluarSuscripcion(String? id) {
+    final registrado = id != null && id.isNotEmpty && !id.startsWith('local-');
+    if (!registrado) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = navigatorKey.currentContext;
+      if (context == null || _dialogoMostrado) return;
+      _dialogoMostrado = true;
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Your OneSignal SDK integration is complete!',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+          content: const Text(
+            'You can now send Push Notifications & In-App Messages through OneSignal. '
+            'Tap below to enable push notifications.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                OneSignal.Notifications.requestPermission(true);
+              },
+              child: const Text('Got it', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   /// Vincula este dispositivo al usuario logueado para que el backend le pueda

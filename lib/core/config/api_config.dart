@@ -10,7 +10,7 @@ class ApiConfig {
   // flutter build apk --dart-define=ONESIGNAL_APP_ID=<tu-app-id>
   static const String onesignalAppId = String.fromEnvironment(
     'ONESIGNAL_APP_ID',
-    defaultValue: '',
+    defaultValue: '0adcd75f-49c3-43ac-9003-489259beac95',
   );
 
   // Auth

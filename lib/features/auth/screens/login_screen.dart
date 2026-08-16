@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../services/google_auth_service.dart';
 import 'reset_password_screen.dart';
 import 'seleccion_tipo_cuenta_screen.dart';
 
@@ -41,6 +43,62 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
+  }
+
+  /// Login o registro con Google. Primero intenta sin tipoUsuario (caso mas
+  /// comun: cuenta ya existe). Si el backend dice que es cuenta nueva y falta
+  /// el tipo, se le pregunta al usuario (Conductor o Pasajero) y reintenta.
+  Future<void> _entrarConGoogle() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+    try {
+      final idToken = await GoogleAuthService.obtenerIdToken();
+      if (idToken == null) return; // usuario cerro el selector de Google
+      await _intentarLoginGoogle(idToken);
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''));
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  Future<void> _intentarLoginGoogle(String idToken, {String? tipoUsuario}) async {
+    try {
+      await context.read<AuthProvider>().loginConGoogle(idToken: idToken, tipoUsuario: tipoUsuario);
+    } on ApiException catch (e) {
+      // Cuenta nueva: el backend pide tipoUsuario. Le preguntamos al usuario
+      // y reintentamos una sola vez con lo que elija.
+      if (e.errorCode == 'VALIDATION_ERROR' && tipoUsuario == null && mounted) {
+        final elegido = await _preguntarTipoCuenta();
+        if (elegido != null) {
+          await _intentarLoginGoogle(idToken, tipoUsuario: elegido);
+        }
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  Future<String?> _preguntarTipoCuenta() {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Qué tipo de cuenta quieres crear?'),
+        content: const Text('Es la primera vez que entras con esta cuenta de Google.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('conductor'),
+            child: const Text('Conductor'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('cliente'),
+            child: const Text('Pasajero'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -157,6 +215,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const Divider(height: 20),
+                      SizedBox(
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.black,
+                            side: const BorderSide(color: AppColors.line),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: _cargando ? null : _entrarConGoogle,
+                          icon: const Icon(Icons.g_mobiledata, size: 26),
+                          label: const Text('Continuar con Google', style: TextStyle(fontWeight: FontWeight.w800)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       SizedBox(
                         height: 48,
                         child: OutlinedButton(

@@ -10,13 +10,20 @@ class ApiConfig {
   // flutter build apk --dart-define=ONESIGNAL_APP_ID=<tu-app-id>
   static const String onesignalAppId = String.fromEnvironment(
     'ONESIGNAL_APP_ID',
-    defaultValue: '0adcd75f-49c3-43ac-9003-489259beac95',
+    defaultValue: '',
   );
 
   // Auth
   static const String registro = '$baseUrl/auth/registro';
   static const String login = '$baseUrl/auth/login';
+  static const String loginGoogle = '$baseUrl/auth/google';
   static const String me = '$baseUrl/auth/me';
+
+  // Google Sign-In: Web Client ID del proyecto (mismo valor que GOOGLE_CLIENT_ID
+  // en el backend). Se pasa como serverClientId para que el idToken traiga
+  // "aud" = este client id, y el backend lo pueda validar.
+  static const String googleClientId =
+      '102494926899-mpp2g1h5pe7m00qeac0h04l5v573fupo.apps.googleusercontent.com';
 
   // Conductores
   static const String conductorPerfil = '$baseUrl/api/v1/conductores/perfil';

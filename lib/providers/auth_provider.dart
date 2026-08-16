@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/network/api_client.dart';
 import '../models/sesion_model.dart';
 import '../services/auth_service.dart';
+import '../services/google_auth_service.dart';
 import '../services/onesignal_service.dart';
 
 const _sesionKey = 'sesion_actual';
@@ -90,12 +91,25 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Login/registro con Google. tipoUsuario solo hace falta la primera vez
+  /// (cuenta nueva) — si el backend responde que falta, el llamador debe
+  /// preguntarle al usuario y reintentar con el tipoUsuario elegido.
+  Future<void> loginConGoogle({required String idToken, String? tipoUsuario}) async {
+    final sesion = await AuthService.loginGoogle(idToken: idToken, tipoUsuario: tipoUsuario);
+    await ApiClient.guardarToken(sesion.accessToken);
+    await _guardarSesionEnDisco(sesion);
+    _sesion = sesion;
+    _vincularPush();
+    notifyListeners();
+  }
+
   Future<void> cerrarSesion() async {
     await ApiClient.limpiarToken();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sesionKey);
     _sesion = null;
     await PushService.cerrarSesion();
+    await GoogleAuthService.cerrarSesion();
     notifyListeners();
   }
 

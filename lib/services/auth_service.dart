@@ -39,6 +39,24 @@ class AuthService {
     return SesionActual.desdeJson(data);
   }
 
+  /// Login/registro con Google. tipoUsuario solo hace falta si es cuenta
+  /// nueva (el backend responde error de validacion si falta y no existe
+  /// el email todavia); en login normal se puede omitir.
+  static Future<SesionActual> loginGoogle({
+    required String idToken,
+    String? tipoUsuario,
+  }) async {
+    final data = await ApiClient.post(
+      ApiConfig.loginGoogle,
+      conAuth: false,
+      body: {
+        'id_token': idToken,
+        if (tipoUsuario != null) 'tipo_usuario': tipoUsuario,
+      },
+    );
+    return _sesionDesdeLogin(data);
+  }
+
   static Future<String> solicitarReset({required String email}) async {
     final data = await ApiClient.post(
       '${ApiConfig.baseUrl}/auth/solicitar-reset',

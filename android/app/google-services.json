@@ -12,7 +12,20 @@
           "package_name": "com.jsinnovatech.hablavas"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "102494926899-fadaqorau29flneot0ejr34tcpt5si14.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jsinnovatech.hablavas",
+            "certificate_hash": "fe91535f4fa9c231fb05f5e82137408d9b77984a"
+          }
+        },
+        {
+          "client_id": "102494926899-mpp2g1h5pe7m00qeac0h04l5v573fupo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCtpr889QD52ro9Ame-xRelJgTKj00sSXM"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "102494926899-mpp2g1h5pe7m00qeac0h04l5v573fupo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

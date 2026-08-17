@@ -31,6 +31,12 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // R8 en release borraba OneSignal y Google Sign-In -> crash al abrir.
+            // Reglas de keep para que esas clases no se eliminen del APK.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

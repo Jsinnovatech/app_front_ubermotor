@@ -17,6 +17,7 @@ import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
 import '../../../services/ubicacion_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
+import '../widgets/modal_propuestas.dart';
 import 'historial_cliente_screen.dart';
 import '../../ranking/screens/ranking_screen.dart';
 
@@ -370,7 +371,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       _mensaje = null;
     });
     try {
-      await ClienteService.solicitarViaje(
+      final viajeSolicitado = await ClienteService.solicitarViaje(
         origenLat: _miLat,
         origenLng: _miLng,
         destinoLat: _destinoLat!,
@@ -381,16 +382,27 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         metodoPago: _metodo,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: AppColors.black,
-          behavior: SnackBarBehavior.floating,
-          content: Text(
-            '🛺 Viaje solicitado. Buscando un conductor...',
-            style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.yellow),
-          ),
-        ),
+      // Flujo InDrive: se abre el modal de propuestas de a 3. Al aceptar una
+      // oferta, el viaje queda 'asignado' y aparece la tarjeta del conductor.
+      final viaje = await mostrarModalPropuestas(
+        context,
+        viajeId: viajeSolicitado.id,
+        realtime: _realtime,
       );
+      if (!mounted) return;
+      if (viaje != null) {
+        setState(() => _viajeActivo = viaje);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.black,
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              '🛺 Oferta aceptada. Tu conductor va en camino.',
+              style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.yellow),
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _mensaje = e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''));

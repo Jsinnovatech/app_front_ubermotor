@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/dialogo_calificacion.dart';
 import '../../../models/viaje_model.dart';
 import '../../../services/calificacion_service.dart';
 import '../../../services/realtime_service.dart';
@@ -333,36 +334,23 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
     }
   }
 
-  /// Abre el dialogo de estrellas para calificar al conductor del viaje.
+  /// Abre el dialogo de estrellas + comentario para calificar al conductor.
   Future<void> _calificar() async {
-    final puntaje = await showDialog<int>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Califica al conductor', style: TextStyle(fontWeight: FontWeight.w900)),
-        content: const Text('¿Cómo estuvo tu viaje? Toca las estrellas.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancelar')),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) {
-              return IconButton(
-                iconSize: 32,
-                icon: Icon(i < 4 ? Icons.star_border : Icons.star, color: AppColors.yellow),
-                onPressed: () => Navigator.of(ctx).pop(i + 1),
-              );
-            }),
-          ),
-        ],
-      ),
+    final resultado = await mostrarDialogoCalificacion(
+      context,
+      titulo: 'Califica al conductor',
     );
-    if (puntaje == null || !mounted) return;
+    if (resultado == null || !mounted) return;
 
     try {
-      await CalificacionService.calificar(viajeId: _viaje.id, puntaje: puntaje);
+      await CalificacionService.calificar(
+        viajeId: _viaje.id,
+        puntaje: resultado.puntaje,
+        comentario: resultado.comentario,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Calificación registrada: $puntaje estrellas')),
+        SnackBar(content: Text('Calificación registrada: ${resultado.puntaje} estrellas')),
       );
     } catch (e) {
       if (!mounted) return;

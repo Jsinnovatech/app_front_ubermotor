@@ -47,6 +47,46 @@ class ViajeService {
     return Viaje.desdeJson(data);
   }
 
+  // ─── Ofertas (flujo InDrive) ────────────────────────────────────────────
+
+  /// El conductor oferta su precio sobre un viaje 'solicitado'. NO consume
+  /// saldo; se consume cuando el cliente acepta la oferta.
+  static Future<Map<String, dynamic>> crearOferta({
+    required int viajeId,
+    required double precio,
+  }) async {
+    final data = await ApiClient.post(
+      ApiConfig.viajeCrearOferta(viajeId),
+      body: {'precio_ofertado': (precio * 100).round() / 100},
+    );
+    return data as Map<String, dynamic>;
+  }
+
+  /// El conductor retira su oferta antes de que venza (30s).
+  static Future<void> retirarOferta({
+    required int viajeId,
+    required int ofertaId,
+  }) async {
+    await ApiClient.delete(ApiConfig.viajeRetirarOferta(viajeId, ofertaId));
+  }
+
+  /// Propuestas activas del viaje para el cliente, de a 3 (offset 0, 3, 6...).
+  static Future<List<ViajeOferta>> ofertas(int viajeId, {int offset = 0}) async {
+    final data = await ApiClient.get(
+      '${ApiConfig.viajeOfertas(viajeId)}?offset=$offset',
+    ) as List;
+    return data.map((e) => ViajeOferta.desdeJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// El cliente acepta la oferta: consume el saldo del conductor y asigna.
+  static Future<Viaje> aceptarOferta({
+    required int viajeId,
+    required int ofertaId,
+  }) async {
+    final data = await ApiClient.post(ApiConfig.viajeAceptarOferta(viajeId, ofertaId));
+    return Viaje.desdeJson(data);
+  }
+
   static Future<Viaje?> obtenerEstado(int viajeId) async {
     final data = await ApiClient.get('${ApiConfig.baseUrl}/api/v1/viajes/$viajeId');
     return Viaje.desdeJson(data);

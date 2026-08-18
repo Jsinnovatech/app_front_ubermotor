@@ -104,6 +104,13 @@ class ConductorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// El conductor oferta su precio sobre un viaje 'solicitado' (flujo InDrive).
+  /// NO consume saldo: se consume cuando el cliente acepta la oferta.
+  Future<void> ofertar(int viajeId, double precio) async {
+    await ViajeService.crearOferta(viajeId: viajeId, precio: precio);
+    notifyListeners();
+  }
+
   Future<void> rechazar(int viajeId) async {
     final viaje = await ViajeService.rechazar(viajeId);
     _viajesDisponibles.removeWhere((v) => v.id == viaje.id);

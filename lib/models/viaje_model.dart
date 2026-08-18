@@ -1,3 +1,52 @@
+/// Oferta de un conductor sobre un viaje 'solicitado' (flujo InDrive): lo que
+/// ve el cliente al elegir entre las propuestas (de a 3).
+class ViajeOferta {
+  final int id;
+  final int viajeId;
+  final int conductorId;
+  final double precioOfertado;
+  final String estado; // activa | aceptada | vencida | retirada
+  final String? conductorNombre;
+  final double? conductorRating;
+  final String? conductorFotoUrl;
+  final String? motoDescripcion;
+  final String? motoPlaca;
+  final double? distanciaKm;
+  final int? etaMinutos;
+
+  ViajeOferta({
+    required this.id,
+    required this.viajeId,
+    required this.conductorId,
+    required this.precioOfertado,
+    required this.estado,
+    this.conductorNombre,
+    this.conductorRating,
+    this.conductorFotoUrl,
+    this.motoDescripcion,
+    this.motoPlaca,
+    this.distanciaKm,
+    this.etaMinutos,
+  });
+
+  factory ViajeOferta.desdeJson(Map<String, dynamic> json) {
+    return ViajeOferta(
+      id: json['id'],
+      viajeId: json['viaje_id'],
+      conductorId: json['conductor_id'],
+      precioOfertado: (json['precio_ofertado'] as num).toDouble(),
+      estado: json['estado'],
+      conductorNombre: json['conductor_nombre'],
+      conductorRating: (json['conductor_rating'] as num?)?.toDouble(),
+      conductorFotoUrl: json['conductor_foto_url'],
+      motoDescripcion: json['moto_descripcion'],
+      motoPlaca: json['moto_placa'],
+      distanciaKm: (json['distancia_km'] as num?)?.toDouble(),
+      etaMinutos: (json['eta_minutos'] as num?)?.toInt(),
+    );
+  }
+}
+
 class Viaje {
   final int id;
   final int clienteId;

@@ -6,13 +6,15 @@ import '../core/network/api_client.dart';
 
 /// Cliente WebSocket de HablaVas:
 /// - Conductor: recibe viajes nuevos al instante (push, patron InDrive).
-/// - Cliente: recibe la ubicacion en vivo del conductor de su viaje (tracking).
+/// - Cliente: recibe la ubicacion en vivo del conductor de su viaje (tracking)
+///   y las ofertas nuevas de los conductores (modal de propuestas de a 3).
 /// El polling queda como fallback.
 class RealtimeService {
   WebSocketChannel? _canal;
   StreamSubscription? _sub;
   void Function(Map<String, dynamic>)? onViajeNuevo;
   void Function(int viajeId, double lat, double lng)? onUbicacionConductor;
+  void Function(int viajeId, int ofertaId, double precio)? onOfertaNueva;
   bool get conectado => _canal != null;
 
   /// Conexion del conductor: recibe carreras nuevas.
@@ -43,6 +45,12 @@ class RealtimeService {
               (datos['viaje_id'] as num?)?.toInt() ?? 0,
               (datos['lat'] as num).toDouble(),
               (datos['lng'] as num).toDouble(),
+            );
+          } else if (datos['tipo'] == 'oferta_nueva') {
+            onOfertaNueva?.call(
+              (datos['viaje_id'] as num?)?.toInt() ?? 0,
+              (datos['oferta_id'] as num?)?.toInt() ?? 0,
+              (datos['precio_ofertado'] as num?)?.toDouble() ?? 0,
             );
           }
         },

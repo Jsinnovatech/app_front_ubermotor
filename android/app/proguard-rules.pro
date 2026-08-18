@@ -29,3 +29,28 @@
 # ---------- Flutter / plugins no deben tocarse ----------
 -keep class io.flutter.** { *; }
 -dontwarn io.flutter.**
+
+# ---------- Plugins Flutter con código nativo ----------
+-keep class com.baseflow.geolocator.** { *; }
+-keep class io.flutter.plugins.imagepicker.** { *; }
+-keep class io.flutter.plugins.sharedpreferences.** { *; }
+-keep class com.google.android.gms.location.** { *; }
+-dontwarn com.baseflow.**
+-dontwarn io.flutter.plugins.**
+
+# ---------- Librerías de terceros que traen OneSignal/google ----------
+-keep class okhttp3.** { *; }
+-keep class okio.** { *; }
+-keep class com.google.gson.** { *; }
+-keep class kotlinx.coroutines.** { *; }
+-keep class androidx.work.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn com.google.gson.**
+-dontwarn kotlinx.coroutines.**
+-dontwarn androidx.work.**
+-dontwarn java.lang.management.**
+
+# ---------- Atributos necesarios para reflection ----------
+-keepattributes Signature, InnerClasses, EnclosingMethod, *Annotation*, Exceptions
+-keepattributes SourceFile, LineNumberTable

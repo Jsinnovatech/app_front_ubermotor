@@ -13,6 +13,19 @@ class ConductorService {
     return Conductor.desdeJson(data);
   }
 
+  /// Documentos del conductor subidos (tipo, cara, url) desde la tabla
+  /// documentos_conductores (el perfil usa esto, no los campos viejos).
+  static Future<List<Map<String, dynamic>>> documentos() async {
+    final data = await ApiClient.get(ApiConfig.conductorDocumentos) as List;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  /// Activa el modo pasajero del conductor: crea su perfil de cliente en el
+  /// backend (si no existe) para que pueda pedir carreras con la misma cuenta.
+  static Future<Map<String, dynamic>> activarModoPasajero() async {
+    return await ApiClient.post(ApiConfig.conductorPerfilPasajero) as Map<String, dynamic>;
+  }
+
   static Future<Viaje?> viajeActivo() async {
     final data = await ApiClient.get(ApiConfig.conductorViajeActivo);
     if (data == null) return null;

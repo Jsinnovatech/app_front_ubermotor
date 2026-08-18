@@ -125,6 +125,14 @@ class ConductorProvider extends ChangeNotifier {
     return viaje;
   }
 
+  Future<void> cancelar(int viajeId) async {
+    final viaje = await ViajeService.cancelar(viajeId);
+    _viajeActivo = null;
+    _viajesDisponibles.removeWhere((v) => v.id == viaje.id);
+    await refrescarSaldo();
+    notifyListeners();
+  }
+
   Future<void> completar(int viajeId) async {
     final viaje = await ViajeService.completar(viajeId);
     _viajeActivo = null;

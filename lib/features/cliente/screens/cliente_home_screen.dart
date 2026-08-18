@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
@@ -6,8 +7,10 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/boton_sos.dart';
 import '../../../models/conductor_disponible_model.dart';
+import '../../../models/viaje_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/cliente_provider.dart';
+import '../../../providers/modo_app_provider.dart';
 import '../../../services/cliente_service.dart';
 import '../../../services/geocoding_service.dart';
 import '../../../services/realtime_service.dart';
@@ -22,7 +25,10 @@ import '../../ranking/screens/ranking_screen.dart';
 /// stepper de tarifa (minimo S/ 3.00), toggle Efectivo/Yape,
 /// y boton "Pedir viaje".
 class ClienteHomeScreen extends StatefulWidget {
-  const ClienteHomeScreen({super.key});
+  /// true cuando es un CONDUCTOR viendo la app en "modo pasajero" (como
+  /// InDrive): muestra el boton para volver al modo conductor.
+  final bool desdeConductor;
+  const ClienteHomeScreen({super.key, this.desdeConductor = false});
 
   @override
   State<ClienteHomeScreen> createState() => _ClienteHomeScreenState();
@@ -55,6 +61,10 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   String? _fotoUrl;
   int _centrarKey = 0;
   final _sheetController = DraggableScrollableController();
+  // Viaje activo: cuando un conductor acepta, aparece la tarjeta del conductor
+  // en la parte de abajo (además del push).
+  Viaje? _viajeActivo;
+  Timer? _viajeTimer;
 
   @override
   void initState() {
@@ -80,9 +90,24 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       _conectarTracking();
       _cargarPerfil();
       _revisarViajeActivo();
+      _iniciarMonitoreoViaje();
     });
     _destino.addListener(_onDestinoCambio);
     _tarifa.addListener(_onTarifaManual);
+  }
+
+  /// Consulta cada 5s el viaje activo del cliente: cuando un conductor
+  /// acepta, actualiza [_viajeActivo] y aparece la tarjeta del conductor.
+  void _iniciarMonitoreoViaje() {
+    _viajeTimer?.cancel();
+    _viajeTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (!mounted) return;
+      try {
+        final viaje = await ClienteService.viajeActivo();
+        if (!mounted) return;
+        setState(() => _viajeActivo = viaje);
+      } catch (_) {}
+    });
   }
 
   /// Cuando el usuario escribe el monto a mano, actualiza _tarifaValor.
@@ -157,6 +182,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
 
   @override
   void dispose() {
+    _viajeTimer?.cancel();
     _origen.dispose();
     _destino.dispose();
     _tarifa.dispose();
@@ -177,6 +203,123 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       });
     };
     await realtime.conectarCliente();
+  }
+
+  /// Menu hamburguesa del cliente: foto, nombre, opciones y, si viene de un
+  /// conductor en modo pasajero, el switch para volver al modo conductor.
+  void _abrirMenuCliente() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final sesion = context.read<AuthProvider>().sesion;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 42,
+                        backgroundColor: AppColors.yellow,
+                        backgroundImage: _fotoUrl != null ? NetworkImage(_fotoUrl!) : null,
+                        child: _fotoUrl == null
+                            ? const Icon(Icons.person, size: 44, color: AppColors.black)
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        sesion?.nombre ?? 'Pasajero',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.black),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Pasajero',
+                        style: TextStyle(fontSize: 12, color: AppColors.textDim, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Divider(color: AppColors.line),
+                ListTile(
+                  leading: const Icon(Icons.history, color: AppColors.black),
+                  title: const Text('Mis viajes', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.black)),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.textDim),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HistorialClienteScreen()));
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.emoji_events, color: AppColors.black),
+                  title: const Text('Ranking', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.black)),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.textDim),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RankingScreen()));
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: AppColors.black),
+                  title: const Text('Cerrar sesión', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.black)),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.textDim),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    context.read<AuthProvider>().cerrarSesion();
+                  },
+                ),
+                if (widget.desdeConductor) ...[
+                  const Divider(color: AppColors.line),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.gray,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.line),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.two_wheeler, color: AppColors.yellow, size: 24),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Modo conductor',
+                                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.black)),
+                              Text('Vuelve a aceptar carreras con la misma cuenta',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textDim)),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: !context.watch<ModoAppProvider>().esPasajero,
+                          activeTrackColor: AppColors.yellow,
+                          onChanged: (_) {
+                            Navigator.of(ctx).pop();
+                            context.read<ModoAppProvider>().cambiarModo(false);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   /// Autocompletado del destino mientras se escribe (debounce simple).
@@ -267,12 +410,18 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         elevation: 0,
         leadingWidth: 120,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 20),
+          padding: const EdgeInsets.only(left: 8),
           child: Row(
-            children: const [
-              Icon(Icons.two_wheeler, color: AppColors.black, size: 26),
-              SizedBox(width: 6),
-              Text(
+            children: [
+              IconButton(
+                tooltip: 'Menú',
+                icon: const Icon(Icons.menu, color: AppColors.black, size: 28),
+                onPressed: _abrirMenuCliente,
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.two_wheeler, color: AppColors.black, size: 26),
+              const SizedBox(width: 4),
+              const Text(
                 'HablaVas',
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
@@ -333,6 +482,17 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
               child: const Icon(Icons.my_location),
             ),
           ),
+          // Tarjeta del conductor cuando acepto la carrera (parte de abajo)
+          if (_viajeActivo != null)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 12,
+              child: _TarjetaConductorActivo(
+                viaje: _viajeActivo!,
+                onVerRuta: () => _centrarEnMiUbicacion(),
+              ),
+            ),
           // Panel deslizante: tarjeta 35% <-> pantalla completa 85% (snap)
           DraggableScrollableSheet(
             controller: _sheetController,
@@ -1068,6 +1228,94 @@ class _BottomNavCliente extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+/// Tarjeta del conductor en la parte de abajo del Home del cliente cuando
+/// aceptó su carrera: foto, nombre, rating, moto y placa + estado del viaje.
+class _TarjetaConductorActivo extends StatelessWidget {
+  final Viaje viaje;
+  final VoidCallback onVerRuta;
+
+  const _TarjetaConductorActivo({required this.viaje, required this.onVerRuta});
+
+  @override
+  Widget build(BuildContext context) {
+    final estado = viaje.estado;
+    final (titulo, color, icono) = switch (estado) {
+      'asignado' => ('Conductor en camino', AppColors.blue, Icons.near_me),
+      'llegado' => ('Tu conductor llegó', AppColors.yellow, Icons.place),
+      'en_curso' => ('En viaje al destino', AppColors.green, Icons.two_wheeler),
+      _ => ('Carrera en curso', AppColors.black, Icons.two_wheeler),
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color, width: 2),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12)],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: AppColors.yellow,
+            backgroundImage: viaje.conductorFotoUrl != null
+                ? NetworkImage(viaje.conductorFotoUrl!)
+                : null,
+            child: viaje.conductorFotoUrl == null
+                ? const Icon(Icons.person, size: 28, color: AppColors.black)
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        viaje.conductorNombre ?? 'Tu conductor',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.black),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '⭐ ${viaje.conductorRating?.toStringAsFixed(1) ?? '—'}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.black),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    if (viaje.motoDescripcion != null) viaje.motoDescripcion!,
+                    if (viaje.motoPlaca != null) viaje.motoPlaca!,
+                  ].join(' · '),
+                  style: const TextStyle(fontSize: 12.5, color: AppColors.textDim, fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(icono, size: 16, color: color),
+                    const SizedBox(width: 4),
+                    Text(
+                      titulo,
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: color),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/navigation_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/google_auth_service.dart';
+import '../../conductor/screens/registro_conductor_multipaso.dart';
 import 'reset_password_screen.dart';
 import 'seleccion_tipo_cuenta_screen.dart';
 
@@ -64,16 +66,25 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _intentarLoginGoogle(String idToken, {String? tipoUsuario}) async {
+  Future<void> _intentarLoginGoogle(String idToken, {String? tipoUsuario, bool nuevoConductor = false}) async {
     try {
       await context.read<AuthProvider>().loginConGoogle(idToken: idToken, tipoUsuario: tipoUsuario);
+      // Conductor NUEVO por Google: tras el login va directo al formulario
+      // de 5 pasos con sus datos pre-llenados para completar los documentos.
+      // Se usa push (NO pushReplacement): el multipaso va ENCIMA del Home para
+      // que al terminar popUntil(isFirst) regrese al Home (validación).
+      if (nuevoConductor) {
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (_) => const RegistroConductorMultipaso(google: true)),
+        );
+      }
     } on ApiException catch (e) {
       // Cuenta nueva: el backend pide tipoUsuario. Le preguntamos al usuario
       // y reintentamos una sola vez con lo que elija.
       if (e.errorCode == 'VALIDATION_ERROR' && tipoUsuario == null && mounted) {
         final elegido = await _preguntarTipoCuenta();
         if (elegido != null) {
-          await _intentarLoginGoogle(idToken, tipoUsuario: elegido);
+          await _intentarLoginGoogle(idToken, tipoUsuario: elegido, nuevoConductor: elegido == 'conductor');
         }
         return;
       }
@@ -126,8 +137,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: ClipOval(
                       child: Image.asset(
                         'logo_icons/logo.webp',
-                        width: 150,
-                        height: 150,
+                        width: 180,
+                        height: 180,
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -224,7 +235,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: _cargando ? null : _entrarConGoogle,
-                          icon: const Icon(Icons.g_mobiledata, size: 26),
+                          icon: Image.asset(
+                            'assets/icons/g-logo.png',
+                            width: 24,
+                            height: 24,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 26),
+                          ),
                           label: const Text('Continuar con Google', style: TextStyle(fontWeight: FontWeight.w800)),
                         ),
                       ),

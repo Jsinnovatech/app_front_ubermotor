@@ -39,8 +39,19 @@ class PushService {
         _abrirPantallaPorPush(event.notification.additionalData);
       });
       _inicializado = true;
-    } catch (_) {
+    } catch (e) {
       _inicializado = false;
+      // DIAGNOSTICO: muestra en pantalla el error de inicializacion de OneSignal
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final context = navigatorKey.currentContext;
+        if (context == null) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red,
+            content: Text('OneSignal error: ${e.toString().replaceFirst('Exception: ', '')}'),
+          ),
+        );
+      });
     }
   }
 

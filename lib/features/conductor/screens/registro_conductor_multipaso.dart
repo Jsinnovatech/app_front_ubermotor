@@ -14,7 +14,11 @@ import '../widgets/tarjeta_subida_documento.dart';
 /// Usa PageView con keepAlive para que las fotos subidas NO se pierdan al
 /// cambiar de pestaña. Tras completar, vuelve al login.
 class RegistroConductorMultipaso extends StatefulWidget {
-  const RegistroConductorMultipaso({super.key});
+  /// Si [google] es true: el conductor YA tiene cuenta (entró con Google),
+  /// la pestaña Datos viene pre-llenada con su nombre y no se pide contraseña.
+  /// Solo complementa sus documentos y al terminar queda "en validación".
+  final bool google;
+  const RegistroConductorMultipaso({super.key, this.google = false});
 
   @override
   State<RegistroConductorMultipaso> createState() => _RegistroConductorMultipasoState();
@@ -36,6 +40,18 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
   bool _ocultarPassword2 = true;
 
   static const _tabs = ['Datos', 'DNI', 'Brevete', 'SOAT', 'Moto'];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.google) {
+      // La cuenta ya existe (entró con Google): habilita las pestañas y
+      // pre-llena el nombre con el de la sesión de Google.
+      _cuentaCreada = true;
+      final sesion = context.read<AuthProvider>().sesion;
+      _nombre.text = sesion?.nombre ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -128,7 +144,10 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
               ),
               onPressed: () {
                 Navigator.of(ctx).pop();
-                context.read<AuthProvider>().cerrarSesion();
+                if (!widget.google) {
+                  // Registro normal por email: la cuenta quedó creada, vuelve al login.
+                  context.read<AuthProvider>().cerrarSesion();
+                }
                 Navigator.of(context).popUntil((r) => r.isFirst);
               },
               child: const Text('ENTENDIDO', style: TextStyle(fontWeight: FontWeight.w900)),
@@ -244,31 +263,49 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
             style: TextStyle(fontSize: 13, color: AppColors.textDim),
           ),
           const SizedBox(height: 24),
-          _campo(_nombre, 'Nombre completo', Icons.person),
-          const SizedBox(height: 14),
-          _campo(_email, 'Correo electrónico', Icons.email),
-          const SizedBox(height: 14),
-          _campo(
-            _password,
-            'Contraseña (mín. 8 caracteres)',
-            Icons.lock,
-            oculto: _ocultarPassword,
-            sufijo: IconButton(
-              icon: Icon(_ocultarPassword ? Icons.visibility : Icons.visibility_off, color: AppColors.textDim),
-              onPressed: () => setState(() => _ocultarPassword = !_ocultarPassword),
+          if (widget.google) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.yellowSoft,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Tu cuenta ya está creada con Google. Solo confirma tu nombre y '
+                'completa tus documentos.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.black),
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          _campo(
-            _password2,
-            'Repetir contraseña',
-            Icons.lock_outline,
-            oculto: _ocultarPassword2,
-            sufijo: IconButton(
-              icon: Icon(_ocultarPassword2 ? Icons.visibility : Icons.visibility_off, color: AppColors.textDim),
-              onPressed: () => setState(() => _ocultarPassword2 = !_ocultarPassword2),
+            const SizedBox(height: 14),
+            _campo(_nombre, 'Nombre completo', Icons.person),
+          ] else ...[
+            _campo(_nombre, 'Nombre completo', Icons.person),
+            const SizedBox(height: 14),
+            _campo(_email, 'Correo electrónico', Icons.email),
+            const SizedBox(height: 14),
+            _campo(
+              _password,
+              'Contraseña (mín. 8 caracteres)',
+              Icons.lock,
+              oculto: _ocultarPassword,
+              sufijo: IconButton(
+                icon: Icon(_ocultarPassword ? Icons.visibility : Icons.visibility_off, color: AppColors.textDim),
+                onPressed: () => setState(() => _ocultarPassword = !_ocultarPassword),
+              ),
             ),
-          ),
+            const SizedBox(height: 14),
+            _campo(
+              _password2,
+              'Repetir contraseña',
+              Icons.lock_outline,
+              oculto: _ocultarPassword2,
+              sufijo: IconButton(
+                icon: Icon(_ocultarPassword2 ? Icons.visibility : Icons.visibility_off, color: AppColors.textDim),
+                onPressed: () => setState(() => _ocultarPassword2 = !_ocultarPassword2),
+              ),
+            ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.red, fontWeight: FontWeight.w700)),
@@ -282,9 +319,13 @@ class _RegistroConductorMultipasoState extends State<RegistroConductorMultipaso>
                 foregroundColor: AppColors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: _cargando ? null : _crearCuenta,
+              onPressed: _cargando
+                  ? null
+                  : widget.google
+                      ? () => _ir(1) // Google: la cuenta ya existe, pasa a DNI
+                      : _crearCuenta,
               child: Text(
-                _cargando ? 'Creando cuenta...' : 'CONTINUAR → DNI',
+                widget.google ? 'CONTINUAR → DNI' : (_cargando ? 'Creando cuenta...' : 'CONTINUAR → DNI'),
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),

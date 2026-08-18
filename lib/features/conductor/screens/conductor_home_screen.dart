@@ -6,8 +6,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/boton_sos.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/conductor_provider.dart';
+import '../../../providers/modo_app_provider.dart';
 import '../../../models/viaje_model.dart';
 import '../../../services/ubicacion_service.dart';
+import '../../../services/conductor_service.dart';
 import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
 import '../../../services/viaje_service.dart';
@@ -107,12 +109,18 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
         elevation: 0,
         leadingWidth: 120,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 20),
+          padding: const EdgeInsets.only(left: 8),
           child: Row(
-            children: const [
-              Icon(Icons.two_wheeler, color: AppColors.black, size: 26),
-              SizedBox(width: 6),
-              Text(
+            children: [
+              IconButton(
+                tooltip: 'Menú',
+                icon: const Icon(Icons.menu, color: AppColors.black, size: 28),
+                onPressed: () => _abrirMenu(),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.two_wheeler, color: AppColors.black, size: 26),
+              const SizedBox(width: 4),
+              const Text(
                 'HablaVas',
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
@@ -131,12 +139,21 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
           ),
         ),
         actions: [
+          // Foto del conductor en el header (igual que el cliente)
           Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: IconButton(
-              tooltip: 'Salir',
-              onPressed: () => context.read<AuthProvider>().cerrarSesion(),
-              icon: const Icon(Icons.logout, color: AppColors.yellow),
+            padding: const EdgeInsets.only(right: 16),
+            child: GestureDetector(
+              onTap: _abrirMenu,
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.yellow,
+                backgroundImage: provider.perfil?.fotoUrl != null
+                    ? NetworkImage(provider.perfil!.fotoUrl!)
+                    : null,
+                child: provider.perfil?.fotoUrl == null
+                    ? const Icon(Icons.person, size: 22, color: AppColors.black)
+                    : null,
+              ),
             ),
           ),
         ],
@@ -257,7 +274,12 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                     if (provider.viajeActivo != null) ...[
                       _CardViajeActivo(
                         viaje: provider.viajeActivo!,
-                        onCambio: () => context.read<ConductorProvider>().cargarViajeActivo(),
+                        onCambio: () async {
+                          await context.read<ConductorProvider>().cargarViajeActivo();
+                          // Al completar/cancelar el viaje se limpia la ruta
+                          // del mapa (antes quedaba marcada).
+                          if (mounted) setState(() => _rutaActiva = []);
+                        },
                       ),
                       const SizedBox(height: 12),
                     ],
@@ -315,6 +337,131 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
   void _mostrarCarreraNueva(Viaje viaje) {
     if (!mounted) return;
     setState(() => _carreraPendiente = viaje);
+  }
+
+  /// Menu hamburguesa estilo InDrive: perfil del conductor, opciones y el
+  /// switch de "modo pasajero" al final (la misma cuenta puede pedir carreras).
+  void _abrirMenu() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final provider = context.read<ConductorProvider>();
+        final conductor = provider.perfil;
+        final modoPasajero = context.watch<ModoAppProvider>().esPasajero;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Perfil: foto grande centrada + nombre debajo
+                Center(
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 42,
+                        backgroundColor: AppColors.yellow,
+                        backgroundImage:
+                            conductor?.fotoUrl != null ? NetworkImage(conductor!.fotoUrl!) : null,
+                        child: conductor?.fotoUrl == null
+                            ? const Icon(Icons.person, size: 44, color: AppColors.black)
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        conductor?.nombre ?? 'Conductor',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.black),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        conductor?.aprobado == true ? 'Cuenta aprobada' : 'En validación',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textDim, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Divider(color: AppColors.line),
+                _opcionMenu(Icons.route, 'Mis viajes', () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HistorialViajesScreen()));
+                }),
+                _opcionMenu(Icons.account_balance_wallet, 'Mi saldo', () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RecargaScreen()));
+                }),
+                _opcionMenu(Icons.person, 'Mi perfil', () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PerfilScreen()));
+                }),
+                _opcionMenu(Icons.logout, 'Cerrar sesión', () {
+                  Navigator.of(ctx).pop();
+                  context.read<AuthProvider>().cerrarSesion();
+                }),
+                const Divider(color: AppColors.line),
+                const SizedBox(height: 8),
+                // Switch: cambiar a modo pasajero (como InDrive)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.gray,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person_pin, color: AppColors.yellow, size: 24),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Modo pasajero',
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.black)),
+                            Text('Pide carreras con la misma cuenta',
+                                style: TextStyle(fontSize: 11, color: AppColors.textDim)),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: modoPasajero,
+                        activeTrackColor: AppColors.yellow,
+                        onChanged: (v) async {
+                          Navigator.of(ctx).pop();
+                          final modoApp = context.read<ModoAppProvider>();
+                          if (v) {
+                            // Crea el perfil de pasajero en el backend (si no existe)
+                            try {
+                              await ConductorService.activarModoPasajero();
+                            } catch (_) {}
+                          }
+                          await modoApp.cambiarModo(v);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _opcionMenu(IconData icono, String texto, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icono, color: AppColors.black),
+      title: Text(texto, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.black)),
+      trailing: const Icon(Icons.chevron_right, color: AppColors.textDim),
+      onTap: onTap,
+    );
   }
 
   /// Si el conductor ya tiene una carrera activa (recargó la app en medio de
@@ -744,6 +891,24 @@ class _CardViajeActivoState extends State<_CardViajeActivo> {
               ),
             ),
           ),
+          if (estado == 'asignado' || estado == 'llegado') ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              width: double.infinity,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(color: AppColors.red),
+                  ),
+                ),
+                onPressed: _trabajando ? null : _confirmarCancelar,
+                child: const Text('CANCELAR CARRERA', style: TextStyle(fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -770,6 +935,49 @@ class _CardViajeActivoState extends State<_CardViajeActivo> {
         default:
           break;
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _trabajando = false);
+    }
+  }
+
+  Future<void> _confirmarCancelar() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cancelar carrera', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: Text(
+          _viaje.estado == 'asignado'
+              ? 'Si cancelas ahora, se devuelve la carrera a tu saldo.'
+              : '¿Seguro que quieres cancelar? Se devuelve la carrera a tu saldo.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final provider = context.read<ConductorProvider>();
+    setState(() => _trabajando = true);
+    try {
+      await provider.cancelar(_viaje.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Carrera cancelada. Tu saldo se mantiene.')),
+      );
+      widget.onCambio();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

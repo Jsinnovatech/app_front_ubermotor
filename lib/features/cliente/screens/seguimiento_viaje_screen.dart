@@ -254,6 +254,23 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
                   'S/ ${v.tarifa.toStringAsFixed(2)} · ${v.metodoPagoCliente}',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.black),
                 ),
+                if (v.estado == 'asignado' || v.estado == 'llegado') ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.red,
+                        side: const BorderSide(color: AppColors.red),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: _confirmarCancelar,
+                      icon: const Icon(Icons.close, size: 20),
+                      label: const Text('CANCELAR VIAJE', style: TextStyle(fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                ],
                 if (v.estado == 'completado') ...[
                   const SizedBox(height: 12),
                   SizedBox(
@@ -279,6 +296,41 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
         ],
       ),
     );
+  }
+
+  /// Confirma y cancela el viaje (solo disponible en asignado/llegado).
+  Future<void> _confirmarCancelar() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cancelar viaje', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: const Text('¿Seguro que quieres cancelar el viaje?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    try {
+      await ViajeService.cancelar(_viaje.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Viaje cancelado. La carrera fue devuelta.')),
+      );
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''))),
+      );
+    }
   }
 
   /// Abre el dialogo de estrellas para calificar al conductor del viaje.

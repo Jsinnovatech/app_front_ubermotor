@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/conductor_provider.dart';
-import 'registro_documentos_screen.dart';
 
-/// Pantalla del conductor NO aprobado: muestra que esta en validacion o que
-/// debe completar sus documentos. Solo cuando el admin lo aprueba puede operar.
+/// Pantalla del conductor NO aprobado: su cuenta esta en validacion. Si el
+/// admin tarda, se contacta soporte por WhatsApp. Ya no abre la grilla de
+/// documentos (el conductor los sube en el multipaso al registrarse).
 class ValidacionPendienteScreen extends StatefulWidget {
   const ValidacionPendienteScreen({super.key});
 
@@ -14,6 +15,8 @@ class ValidacionPendienteScreen extends StatefulWidget {
 }
 
 class _ValidacionPendienteScreenState extends State<ValidacionPendienteScreen> {
+  static const _whatsapp = '51932259291'; // soporte HablaVas
+
   bool _cargando = false;
 
   Future<void> _cargarPerfil() async {
@@ -22,11 +25,15 @@ class _ValidacionPendienteScreenState extends State<ValidacionPendienteScreen> {
     if (mounted) setState(() => _cargando = false);
   }
 
+  Future<void> _contactarWhatsApp() async {
+    final uri = Uri.parse('https://wa.me/$_whatsapp');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final conductor = context.watch<ConductorProvider>().perfil;
-    final tieneDocumentos = conductor != null && (conductor.dniFotoUrl != null || conductor.dni != null);
-
     return Scaffold(
       backgroundColor: AppColors.gray,
       body: Center(
@@ -57,25 +64,46 @@ class _ValidacionPendienteScreenState extends State<ValidacionPendienteScreen> {
                 style: TextStyle(fontSize: 14, color: AppColors.textDim, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 28),
-              if (conductor != null && !(conductor.dniFotoUrl != null || conductor.dni != null)) ...[
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.yellow,
-                      foregroundColor: AppColors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const RegistroDocumentosScreen()),
-                    ),
-                    icon: const Icon(Icons.badge),
-                    label: const Text('SUBIR MIS DOCUMENTOS', style: TextStyle(fontWeight: FontWeight.w900)),
-                  ),
+              // Soporte: si el admin tarda en validar, contactar por WhatsApp
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.line),
                 ),
-                const SizedBox(height: 10),
-              ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Aún no validan tus documentos',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.black),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Si ya pasó tiempo y sigue sin validarse, escríbenos por WhatsApp.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: AppColors.textDim),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _contactarWhatsApp,
+                        icon: const Icon(Icons.chat),
+                        label: const Text('Soporte por WhatsApp', style: TextStyle(fontWeight: FontWeight.w900)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.black,

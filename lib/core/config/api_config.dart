@@ -10,7 +10,7 @@ class ApiConfig {
   // flutter build apk --dart-define=ONESIGNAL_APP_ID=<tu-app-id>
   static const String onesignalAppId = String.fromEnvironment(
     'ONESIGNAL_APP_ID',
-    defaultValue: '',
+    defaultValue: '0adcd75f-49c3-43ac-9003-489259beac95',
   );
 
   // Auth
@@ -27,6 +27,8 @@ class ApiConfig {
 
   // Conductores
   static const String conductorPerfil = '$baseUrl/api/v1/conductores/perfil';
+  static const String conductorDocumentos = '$baseUrl/api/v1/conductores/documentos';
+  static const String conductorPerfilPasajero = '$baseUrl/api/v1/conductores/perfil-pasajero';
   static const String conductorDisponibilidad = '$baseUrl/api/v1/conductores/disponibilidad';
   static const String conductorUbicacion = '$baseUrl/api/v1/conductores/ubicacion';
   static const String conductorSaldo = '$baseUrl/api/v1/conductores/saldo';

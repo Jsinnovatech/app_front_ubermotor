@@ -21,33 +21,10 @@ class AuthProvider extends ChangeNotifier {
   String? get tipoUsuario => _sesion?.tipoUsuario;
 
   AuthProvider() {
-    _restaurarSesion();
-  }
-
-  Future<void> _restaurarSesion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final guardada = prefs.getString(_sesionKey);
-    if (guardada != null) {
-      try {
-        final json = jsonDecode(guardada);
-        // Valida que el token siga vigente antes de restaurar la sesion.
-        // Si el usuario fue desactivado o el token expiro (sesion inactiva),
-        // la sesion no debe restaurarse: se limpia y vuelve al login.
-        await ApiClient.me();
-        _sesion = SesionActual(
-          accessToken: json['access_token'],
-          usuarioId: json['usuario_id'],
-          nombre: json['nombre'],
-          tipoUsuario: json['tipo_usuario'],
-        );
-        _vincularPush();
-      } catch (_) {
-        await ApiClient.limpiarToken();
-        await prefs.remove(_sesionKey);
-      }
-    }
     _cargando = false;
-    notifyListeners();
+    // No se restaura la sesion al abrir la app: el usuario debe entrar con su
+    // correo y clave cada vez (decidido por el CEO). Asi pantallas como "En
+    // validacion" no aparecen de frente sin haber hecho login.
   }
 
   Future<void> _guardarSesionEnDisco(SesionActual sesion) async {

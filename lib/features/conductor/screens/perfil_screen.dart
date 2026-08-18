@@ -19,11 +19,29 @@ class PerfilScreen extends StatefulWidget {
 class _PerfilScreenState extends State<PerfilScreen> {
   bool _subiendo = false;
   String? _mensaje;
+  List<Map<String, dynamic>> _documentos = [];
 
   @override
   void initState() {
     super.initState();
     context.read<ConductorProvider>().cargarPerfil();
+    _cargarDocumentos();
+  }
+
+  /// Carga los documentos reales (tabla documentos_conductores).
+  Future<void> _cargarDocumentos() async {
+    try {
+      final docs = await ConductorService.documentos();
+      if (mounted) setState(() => _documentos = docs);
+    } catch (_) {}
+  }
+
+  /// URL del primer documento del tipo dado (o null si no lo subio).
+  String? _urlDocumento(String tipo) {
+    for (final d in _documentos) {
+      if (d['tipo'] == tipo && d['url'] != null) return d['url'] as String;
+    }
+    return null;
   }
 
   Future<void> _subirDocumento(String tipo, String label) async {
@@ -116,10 +134,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
             style: TextStyle(fontSize: 12.5, color: AppColors.textDim),
           ),
           const SizedBox(height: 12),
-          _filaDocumento('Tu foto', conductor?.fotoUrl, Icons.person, 'foto'),
-          _filaDocumento('DNI', conductor?.dniFotoUrl, Icons.badge, 'dni'),
-          _filaDocumento('Licencia de conducir', conductor?.licenciaFotoUrl, Icons.drive_eta, 'licencia'),
-          _filaDocumento('Antecedentes', conductor?.antecedentesFotoUrl, Icons.gavel, 'antecedentes'),
+          _filaDocumento('Tu foto', _urlDocumento('foto'), Icons.person, 'foto'),
+          _filaDocumento('DNI', _urlDocumento('dni'), Icons.badge, 'dni'),
+          _filaDocumento('Brevete', _urlDocumento('brevete'), Icons.drive_eta, 'brevete'),
+          _filaDocumento('SOAT', _urlDocumento('soat'), Icons.verified_user, 'soat'),
+          _filaDocumento('Moto', _urlDocumento('moto'), Icons.two_wheeler, 'moto'),
           if (_mensaje != null) ...[
             const SizedBox(height: 12),
             Text(_mensaje!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),

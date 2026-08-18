@@ -31,12 +31,11 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
-            // R8 en release borraba OneSignal y Google Sign-In -> crash al abrir.
-            // Reglas de keep para que esas clases no se eliminen del APK.
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
+            // R8 (minify) rompe silenciosamente el registro de OneSignal:
+            // no crashea, pero el SDK no genera token FCM ni reporta sesiones.
+            // Se deja OFF: APK ~25MB pero funcional de punta a punta.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

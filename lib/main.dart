@@ -7,6 +7,7 @@ import 'providers/auth_provider.dart';
 import 'providers/conductor_provider.dart';
 import 'providers/cliente_provider.dart';
 import 'providers/autoridad_provider.dart';
+import 'providers/modo_app_provider.dart';
 
 import 'features/auth/screens/login_screen.dart';
 import 'features/conductor/screens/conductor_home_screen.dart';
@@ -33,6 +34,7 @@ class HablaVasApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ConductorProvider()),
         ChangeNotifierProvider(create: (_) => ClienteProvider()),
         ChangeNotifierProvider(create: (_) => AutoridadProvider()),
+        ChangeNotifierProvider(create: (_) => ModoAppProvider()),
       ],
       child: MaterialApp(
         title: 'HablaVas',
@@ -64,6 +66,11 @@ class _Portero extends StatelessWidget {
 
     switch (auth.tipoUsuario) {
       case 'conductor':
+        // El conductor puede alternar a modo pasajero (como InDrive) desde su
+        // menú hamburguesa. Si está en modo pasajero, ve el Home del cliente.
+        if (context.watch<ModoAppProvider>().esPasajero) {
+          return const ClienteHomeScreen(desdeConductor: true);
+        }
         return const _ConductorShell();
       case 'cliente':
         return const ClienteHomeScreen();

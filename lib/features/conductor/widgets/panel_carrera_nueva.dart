@@ -2,22 +2,24 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/viaje_model.dart';
+import 'campo_oferta.dart';
 
 /// Panel accionable estilo InDrive para una carrera nueva que llega por
-/// WebSocket. Reemplaza el SnackBar informativo: muestra origen/destino,
-/// rider (nombre + rating) y botones Aceptar / Rechazar.
+/// WebSocket: el conductor escribe SU oferta sobre la tarifa del cliente.
+/// Reemplaza el Aceptar directo: ofertar no consume saldo (se consume cuando
+/// el cliente acepta la oferta).
 class PanelCarreraNueva extends StatefulWidget {
   final Viaje viaje;
-  final VoidCallback onAceptar;
+  final Future<void> Function(double) onOfertar;
   final VoidCallback onRechazar;
   final Duration plazoReaccion;
 
   const PanelCarreraNueva({
     super.key,
     required this.viaje,
-    required this.onAceptar,
+    required this.onOfertar,
     required this.onRechazar,
-    this.plazoReaccion = const Duration(seconds: 15),
+    this.plazoReaccion = const Duration(seconds: 50),
   });
 
   @override
@@ -27,6 +29,8 @@ class PanelCarreraNueva extends StatefulWidget {
 class _PanelCarreraNuevaState extends State<PanelCarreraNueva> {
   Timer? _timer;
   late int _segundosRestantes;
+  bool _ofertando = false;
+  double _precio = 3.0;
 
   @override
   void initState() {
@@ -107,12 +111,32 @@ class _PanelCarreraNuevaState extends State<PanelCarreraNueva> {
                         ),
                       ),
                       Text(
-                        'S/ ${v.tarifa.toStringAsFixed(2)} · ${v.metodoPagoCliente}',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.yellow),
+                        'Piso S/ ${v.tarifa.toStringAsFixed(2)} · ${v.metodoPagoCliente}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.yellow),
                       ),
                     ],
                   ),
                   const SizedBox(height: 14),
+                  // Campo de oferta del conductor (min S/ 3.00, max S/ 50.00)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Tu oferta',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.white),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: CampoOferta(onCambio: (v) => _precio = v),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -136,8 +160,16 @@ class _PanelCarreraNuevaState extends State<PanelCarreraNueva> {
                             minimumSize: const Size.fromHeight(44),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
-                          onPressed: widget.onAceptar,
-                          child: const Text('Aceptar', style: TextStyle(fontWeight: FontWeight.w900)),
+                          onPressed: _ofertando
+                              ? null
+                              : () async {
+                                  setState(() => _ofertando = true);
+                                  await widget.onOfertar(_precio);
+                                },
+                          child: Text(
+                            _ofertando ? 'Enviando...' : 'Ofertar S/ ${_precio.toStringAsFixed(2)}',
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
                         ),
                       ),
                     ],

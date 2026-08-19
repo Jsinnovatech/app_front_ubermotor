@@ -4,17 +4,20 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/boton_sos.dart';
+import '../../../core/widgets/dialogo_calificacion.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/conductor_provider.dart';
 import '../../../providers/modo_app_provider.dart';
 import '../../../models/viaje_model.dart';
 import '../../../services/ubicacion_service.dart';
 import '../../../services/conductor_service.dart';
+import '../../../services/calificacion_service.dart';
 import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
 import '../../../services/viaje_service.dart';
 import '../widgets/mapa_viajes.dart';
 import '../widgets/panel_carrera_nueva.dart';
+import '../widgets/dialogo_oferta.dart';
 import 'historial_viajes_screen.dart';
 import 'perfil_screen.dart';
 import 'recarga_screen.dart';
@@ -69,6 +72,28 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
       provider.agregarViajeRealtime(viaje);
       _mostrarCarreraNueva(viaje);
     };
+    // El cliente acepto la oferta: la carrera pasa a activa al instante.
+    _realtime.onViajeAceptado = (datos) {
+      if (!mounted) return;
+      if (datos['id'] == null && datos['viaje_id'] != null) {
+        datos['id'] = datos['viaje_id'];
+      }
+      if (datos['id'] == null) return;
+      final provider = context.read<ConductorProvider>();
+      final viaje = Viaje.desdeJson(datos);
+      setState(() => _carreraPendiente = null);
+      provider.setViajeActivo(viaje);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.green,
+          content: Text(
+            '¡El cliente aceptó tu oferta de S/ ${viaje.tarifa.toStringAsFixed(2)}! En camino al punto de recojo.',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      );
+    };
     _realtime.conectar();
   }
 
@@ -93,6 +118,12 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     } else {
       // Sin permiso de ubicacion: cae a ver todos (comportamiento previo).
       provider.cargarViajesDisponibles();
+    }
+    // Fallback InDrive: si el cliente acepto la oferta pero el WebSocket no
+    // llego (red fluctuante), el viaje activo se detecta igual en el siguiente
+    // ciclo y la tarjeta de la carrera aparece.
+    if (provider.viajeActivo == null) {
+      await provider.cargarViajeActivo();
     }
   }
 
@@ -321,7 +352,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
               top: 12,
               child: PanelCarreraNueva(
                 viaje: _carreraPendiente!,
-                onAceptar: () => _aceptarCarrera(_carreraPendiente!),
+                onOfertar: (precio) => _ofertarCarrera(_carreraPendiente!, precio),
                 onRechazar: () => _rechazarCarrera(_carreraPendiente!),
               ),
             ),
@@ -490,14 +521,20 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     } catch (_) {}
   }
 
-  Future<void> _aceptarCarrera(Viaje viaje) async {
+  /// El conductor oferta su precio sobre la carrera (flujo InDrive). Ofertar
+  /// NO consume saldo: se consume cuando el cliente acepta la oferta.
+  Future<void> _ofertarCarrera(Viaje viaje, double precio) async {
     if (!mounted) return;
     setState(() => _carreraPendiente = null);
     try {
-      await context.read<ConductorProvider>().aceptar(viaje.id);
+      await context.read<ConductorProvider>().ofertar(viaje.id, precio);
       if (!mounted) return;
-      await context.read<ConductorProvider>().cargarViajeActivo();
-      await _cargarRutaActiva();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Oferta de S/ ${precio.toStringAsFixed(2)} enviada. Si el cliente la acepta, la carrera será tuya.'),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       _mostrarError(e);
@@ -531,7 +568,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     }
   }
 
-  /// Abre el detalle de un viaje tocado en el mapa, con boton Aceptar.
+  /// Abre el detalle de un viaje tocado en el mapa, con boton Ofertar.
   Future<void> _mostrarDetalleViaje(Viaje viaje) async {
     if (!mounted) return;
     await showDialog<void>(
@@ -561,7 +598,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'S/ ${viaje.tarifa.toStringAsFixed(2)} · ${viaje.metodoPagoCliente}',
+              'Piso S/ ${viaje.tarifa.toStringAsFixed(2)} · ${viaje.metodoPagoCliente}',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.black),
             ),
           ],
@@ -575,16 +612,11 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.green, foregroundColor: AppColors.white),
             onPressed: () async {
               Navigator.of(ctx).pop();
-              try {
-                await context.read<ConductorProvider>().aceptar(viaje.id);
-                if (mounted) {
-                  await context.read<ConductorProvider>().cargarViajeActivo();
-                }
-              } catch (e) {
-                if (mounted) _mostrarError(e);
-              }
+              final precio = await pedirOferta(context);
+              if (precio == null || !mounted) return;
+              await _ofertarCarrera(viaje, precio);
             },
-            child: const Text('Aceptar', style: TextStyle(fontWeight: FontWeight.w800)),
+            child: const Text('Ofertar', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -703,16 +735,11 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.green, foregroundColor: AppColors.white),
                     onPressed: () async {
-                      try {
-                        await provider.aceptar(viaje.id);
-                        if (mounted) {
-                          await context.read<ConductorProvider>().cargarViajeActivo();
-                        }
-                      } catch (e) {
-                        if (mounted) _mostrarError(e);
-                      }
+                      final precio = await pedirOferta(context);
+                      if (precio == null || !mounted) return;
+                      await _ofertarCarrera(viaje, precio);
                     },
-                    child: const Text('Aceptar'),
+                    child: const Text('Ofertar'),
                   ),
                 ),
               ),
@@ -932,6 +959,8 @@ class _CardViajeActivoState extends State<_CardViajeActivo> {
             const SnackBar(content: Text('Viaje completado. ¡Gracias!')),
           );
           widget.onCambio();
+          // Calificación mutua: el conductor califica al cliente del viaje.
+          _calificarAlCliente();
         default:
           break;
       }
@@ -943,6 +972,32 @@ class _CardViajeActivoState extends State<_CardViajeActivo> {
       }
     } finally {
       if (mounted) setState(() => _trabajando = false);
+    }
+  }
+
+  /// Calificación mutua: tras completar el viaje, el conductor califica al cliente.
+  Future<void> _calificarAlCliente() async {
+    final resultado = await mostrarDialogoCalificacion(
+      context,
+      titulo: 'Califica al cliente',
+    );
+    if (resultado == null || !mounted) return;
+
+    try {
+      await CalificacionService.calificar(
+        viajeId: _viaje.id,
+        puntaje: resultado.puntaje,
+        comentario: resultado.comentario,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Calificación registrada: ${resultado.puntaje} estrellas')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''))),
+      );
     }
   }
 

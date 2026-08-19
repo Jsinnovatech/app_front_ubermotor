@@ -55,7 +55,17 @@ class ApiClient {
   }
 
   static dynamic _procesarRespuesta(http.Response response) {
-    final body = response.body.isNotEmpty ? jsonDecode(response.body) : null;
+    // El cuerpo NO siempre es JSON (proxy 502, error plano del server, etc).
+    // Si el decode falla se usa el texto crudo y se evita el crasheo con
+    // 'Unexpected character' en la UI.
+    dynamic body;
+    if (response.body.isNotEmpty) {
+      try {
+        body = jsonDecode(response.body);
+      } catch (_) {
+        body = null;
+      }
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
@@ -65,7 +75,9 @@ class ApiClient {
         ? body['message'] as String
         : (body is Map && body['detail'] != null)
             ? body['detail'].toString()
-            : 'Error ${response.statusCode}';
+            : response.body.isNotEmpty
+                ? response.body.trim()
+                : 'Error ${response.statusCode}';
     final errorCode = (body is Map && body['error_code'] != null) ? body['error_code'] as String : null;
 
     throw ApiException(statusCode: response.statusCode, message: mensaje, errorCode: errorCode);

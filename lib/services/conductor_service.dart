@@ -32,6 +32,36 @@ class ConductorService {
     return Viaje.desdeJson(data);
   }
 
+  /// Actualiza nombre/dni/licencia y datos del vehiculo (marca/modelo/placa/
+  /// color). El backend rechaza (422) si la placa ya pertenece a otro
+  /// conductor - se propaga como ApiException para mostrar el mensaje real.
+  static Future<Conductor> actualizarPerfil({
+    required String nombre,
+    String? dni,
+    String? licencia,
+    String? placa,
+    String? marca,
+    String? modelo,
+    String? color,
+  }) async {
+    final data = await ApiClient.put(
+      ApiConfig.conductorPerfil,
+      body: {
+        'nombre': nombre,
+        if (dni != null) 'dni': dni,
+        if (licencia != null) 'licencia': licencia,
+        if (placa != null || marca != null || modelo != null || color != null)
+          'vehiculo': {
+            if (placa != null) 'placa': placa,
+            if (marca != null) 'marca': marca,
+            if (modelo != null) 'modelo': modelo,
+            if (color != null) 'color': color,
+          },
+      },
+    );
+    return Conductor.desdeJson(data);
+  }
+
   static Future<Conductor> cambiarDisponibilidad({required bool disponible}) async {
     final data = await ApiClient.put(
       ApiConfig.conductorDisponibilidad,

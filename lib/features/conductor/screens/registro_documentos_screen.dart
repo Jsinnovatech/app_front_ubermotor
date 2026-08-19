@@ -18,6 +18,40 @@ class RegistroDocumentosScreen extends StatefulWidget {
 class _RegistroDocumentosScreenState extends State<RegistroDocumentosScreen> {
   bool _subiendo = false;
   String? _mensaje;
+  final _placa = TextEditingController();
+  bool _guardandoPlaca = false;
+  String? _errorPlaca;
+
+  @override
+  void dispose() {
+    _placa.dispose();
+    super.dispose();
+  }
+
+  /// Guarda la placa del vehiculo. El backend valida que no le pertenezca a
+  /// otro conductor (placa unica) y devuelve el mensaje real si falla.
+  Future<void> _guardarPlaca() async {
+    final valor = _placa.text.trim();
+    if (valor.isEmpty) {
+      setState(() => _errorPlaca = 'Ingresa el numero de placa');
+      return;
+    }
+    setState(() {
+      _guardandoPlaca = true;
+      _errorPlaca = null;
+    });
+    try {
+      final conductor = await ConductorService.perfil();
+      await ConductorService.actualizarPerfil(nombre: conductor.nombre, placa: valor);
+      if (!mounted) return;
+      setState(() => _mensaje = 'Placa guardada correctamente.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorPlaca = e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''));
+    } finally {
+      if (mounted) setState(() => _guardandoPlaca = false);
+    }
+  }
 
   // (tipo, cara, etiqueta, icono)
   static const _documentos = [
@@ -121,6 +155,66 @@ class _RegistroDocumentosScreenState extends State<RegistroDocumentosScreen> {
               ),
             );
           }),
+          const SizedBox(height: 16),
+          // Numero de placa del vehiculo: unico por conductor, el backend
+          // rechaza si ya pertenece a otra cuenta.
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Placa de tu moto',
+                  style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.black),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _placa,
+                        textCapitalization: TextCapitalization.characters,
+                        style: const TextStyle(color: AppColors.black, fontWeight: FontWeight.w700),
+                        decoration: const InputDecoration(
+                          hintText: 'Ej. ABC-123',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.black,
+                        foregroundColor: AppColors.yellow,
+                      ),
+                      onPressed: _guardandoPlaca ? null : _guardarPlaca,
+                      child: _guardandoPlaca
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.yellow),
+                            )
+                          : const Text('Guardar'),
+                    ),
+                  ],
+                ),
+                if (_errorPlaca != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _errorPlaca!,
+                    style: const TextStyle(color: AppColors.red, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
           if (_mensaje != null)
             Container(

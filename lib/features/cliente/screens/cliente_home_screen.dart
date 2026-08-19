@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/boton_sos.dart';
 import '../../../models/conductor_disponible_model.dart';
 import '../../../models/viaje_model.dart';
 import '../../../providers/auth_provider.dart';
@@ -280,6 +279,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> with SingleTicker
                   },
                 ),
                 ListTile(
+                  leading: const Icon(Icons.sos, color: AppColors.red),
+                  title: const Text('SOS — Emergencia', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.red)),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.textDim),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _confirmarSos();
+                  },
+                ),
+                ListTile(
                   leading: const Icon(Icons.logout, color: AppColors.black),
                   title: const Text('Cerrar sesión', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.black)),
                   trailing: const Icon(Icons.chevron_right, color: AppColors.textDim),
@@ -480,7 +488,6 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> with SingleTicker
         ],
       ),
       body: _viajeActivo != null ? _bodyViajeActivo(context) : _bodyPedirViaje(context),
-      floatingActionButton: BotonSos(onDisparar: _dispararSos),
       bottomNavigationBar: _BottomNavCliente(
         onViajes: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
@@ -990,10 +997,33 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> with SingleTicker
     context.read<ClienteProvider>().cargarConductores(lat: posicion.latitude, lng: posicion.longitude);
   }
 
+  /// Confirma antes de disparar la alerta (evita SOS por toque accidental).
+  Future<void> _confirmarSos() async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Activar alerta SOS?', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.red)),
+        content: const Text('Se notificará tu ubicación a Serenazgo/Policía de inmediato.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, activar SOS', style: TextStyle(color: AppColors.red, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (confirmado == true) _dispararSos();
+  }
+
   Future<void> _dispararSos() async {
     if (!mounted) return;
     try {
-      await SosService.activar(lat: -12.0464, lng: -77.0428);      if (!mounted) return;
+      await SosService.activar(lat: _miLat, lng: _miLng);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppColors.red,
@@ -1272,9 +1302,16 @@ class _MapaUbicacionState extends State<_MapaUbicacion> {
     // Motos disponibles cerca (sin viaje activo todavia): un pin amarillo por
     // cada conductor, ademas de la tarjeta en la lista de abajo.
     for (final c in widget.conductoresCerca) {
+      // Desplazamiento pequeño y ESTABLE (semilla = id del conductor) para
+      // que dos motos casi en el mismo punto no se tapen entre si al ver
+      // el mapa. Mismo conductor -> mismo desplazamiento siempre, no salta
+      // en cada refresco. ~15m de radio maximo, no distorsiona su ubicacion real.
+      final rnd = Random(c.conductorId);
+      final jitterLat = (rnd.nextDouble() - 0.5) * 0.00025;
+      final jitterLng = (rnd.nextDouble() - 0.5) * 0.00025;
       marcadores.add(
         Marker(
-          point: LatLng(c.ubicacionLat, c.ubicacionLng),
+          point: LatLng(c.ubicacionLat + jitterLat, c.ubicacionLng + jitterLng),
           width: 38,
           height: 38,
           child: Container(

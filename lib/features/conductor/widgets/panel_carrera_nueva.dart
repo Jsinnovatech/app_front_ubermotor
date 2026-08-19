@@ -19,7 +19,7 @@ class PanelCarreraNueva extends StatefulWidget {
     required this.viaje,
     required this.onOfertar,
     required this.onRechazar,
-    this.plazoReaccion = const Duration(seconds: 30),
+    this.plazoReaccion = const Duration(seconds: 50),
   });
 
   @override

@@ -46,6 +46,14 @@ class ApiConfig {
   static String viajeCompletar(int id) => '$baseUrl/api/v1/viajes/$id/completar';
   static String viajeCancelar(int id) => '$baseUrl/api/v1/viajes/$id/cancelar';
 
+  // Ofertas (flujo InDrive): el conductor oferta y el cliente elige de a 3.
+  static String viajeCrearOferta(int viajeId) => '$baseUrl/api/v1/viajes/$viajeId/ofertas';
+  static String viajeOfertas(int viajeId) => '$baseUrl/api/v1/viajes/$viajeId/ofertas';
+  static String viajeAceptarOferta(int viajeId, int ofertaId) =>
+      '$baseUrl/api/v1/viajes/$viajeId/ofertas/$ofertaId/aceptar';
+  static String viajeRetirarOferta(int viajeId, int ofertaId) =>
+      '$baseUrl/api/v1/viajes/$viajeId/ofertas/$ofertaId';
+
   // Clientes
   static const String clienteSolicitarViaje = '$baseUrl/api/v1/clientes/viajes';
   static const String clienteHistorial = '$baseUrl/api/v1/clientes/viajes';

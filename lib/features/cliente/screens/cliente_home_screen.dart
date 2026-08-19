@@ -17,6 +17,7 @@ import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
 import '../../../services/ubicacion_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
+import '../widgets/modal_propuestas.dart';
 import 'historial_cliente_screen.dart';
 import '../../ranking/screens/ranking_screen.dart';
 
@@ -202,6 +203,12 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         _conductorLng = lng;
       });
     };
+    // Otro conductor se conecto/desconecto o recargo: refresca la lista y
+    // los pines del mapa al instante (patron InDrive, sin polling manual).
+    realtime.onConductoresActualizados = () {
+      if (!mounted || !_ubicacionCargada) return;
+      context.read<ClienteProvider>().cargarConductores(lat: _miLat, lng: _miLng);
+    };
     await realtime.conectarCliente();
   }
 
@@ -370,7 +377,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       _mensaje = null;
     });
     try {
-      await ClienteService.solicitarViaje(
+      final viajeSolicitado = await ClienteService.solicitarViaje(
         origenLat: _miLat,
         origenLng: _miLng,
         destinoLat: _destinoLat!,
@@ -381,16 +388,27 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         metodoPago: _metodo,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: AppColors.black,
-          behavior: SnackBarBehavior.floating,
-          content: Text(
-            '🛺 Viaje solicitado. Buscando un conductor...',
-            style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.yellow),
-          ),
-        ),
+      // Flujo InDrive: se abre el modal de propuestas de a 3. Al aceptar una
+      // oferta, el viaje queda 'asignado' y aparece la tarjeta del conductor.
+      final viaje = await mostrarModalPropuestas(
+        context,
+        viajeId: viajeSolicitado.id,
+        realtime: _realtime,
       );
+      if (!mounted) return;
+      if (viaje != null) {
+        setState(() => _viajeActivo = viaje);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.black,
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              '🛺 Oferta aceptada. Tu conductor va en camino.',
+              style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.yellow),
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _mensaje = e.toString().replaceFirst('ApiException(', '').replaceFirst(')', ''));
@@ -468,6 +486,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
               conductorLat: _conductorLat,
               conductorLng: _conductorLng,
               centrarKey: _centrarKey,
+              conductoresCerca: context.watch<ClienteProvider>().conductores,
             ),
           ),
           // Boton flotante "Mi ubicacion": centra la camara en el GPS
@@ -1048,6 +1067,10 @@ class _MapaUbicacion extends StatefulWidget {
   final double? conductorLat;
   final double? conductorLng;
   final int centrarKey;
+  // Motos disponibles cerca (sin viaje activo): se pintan en el mapa ademas
+  // de en la lista de tarjetas debajo. Se actualiza por REST al cargar la
+  // ubicacion y en vivo por WebSocket (onConductoresActualizados).
+  final List<ConductorDisponible> conductoresCerca;
 
   const _MapaUbicacion({
     required this.lat,
@@ -1056,6 +1079,7 @@ class _MapaUbicacion extends StatefulWidget {
     this.conductorLat,
     this.conductorLng,
     this.centrarKey = 0,
+    this.conductoresCerca = const [],
   });
 
   @override
@@ -1095,14 +1119,26 @@ class _MapaUbicacionState extends State<_MapaUbicacion> {
         child: const Icon(Icons.my_location, color: AppColors.blue, size: 40),
       ),
     ];
-    // Pin del conductor en vivo (tracking del viaje)
+    // Motos disponibles cerca (sin viaje activo todavia): un pin amarillo por
+    // cada conductor, ademas de la tarjeta en la lista de abajo.
+    for (final c in widget.conductoresCerca) {
+      marcadores.add(
+        Marker(
+          point: LatLng(c.ubicacionLat, c.ubicacionLng),
+          width: 38,
+          height: 38,
+          child: const Icon(Icons.electric_rickshaw, color: AppColors.yellow, size: 38),
+        ),
+      );
+    }
+    // Pin del conductor en vivo (tracking del viaje ya asignado)
     if (widget.conductorLat != null && widget.conductorLng != null) {
       marcadores.add(
         Marker(
           point: LatLng(widget.conductorLat!, widget.conductorLng!),
           width: 44,
           height: 44,
-          child: const Icon(Icons.sports_motorsports, color: AppColors.green, size: 44),
+          child: const Icon(Icons.electric_rickshaw, color: AppColors.green, size: 44),
         ),
       );
     }

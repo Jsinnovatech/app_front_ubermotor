@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/dialogo_calificacion.dart';
 import '../../../core/widgets/estado_chip.dart';
 import '../../../models/viaje_model.dart';
 import '../../../services/calificacion_service.dart';
@@ -34,35 +35,22 @@ class _HistorialViajesScreenState extends State<HistorialViajesScreen> {
   }
 
   Future<void> _calificar(int viajeId) async {
-    final puntaje = await showDialog<int>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Califica el viaje', style: TextStyle(fontWeight: FontWeight.w900)),
-        content: const Text('¿Cómo estuvo el viaje? Toca las estrellas.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancelar')),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) {
-              return IconButton(
-                iconSize: 32,
-                icon: Icon(i < 4 ? Icons.star_border : Icons.star, color: AppColors.yellow),
-                onPressed: () => Navigator.of(ctx).pop(i + 1),
-              );
-            }),
-          ),
-        ],
-      ),
+    final resultado = await mostrarDialogoCalificacion(
+      context,
+      titulo: 'Califica al cliente',
     );
-    if (puntaje == null || !mounted) return;
+    if (resultado == null || !mounted) return;
 
     try {
-      await CalificacionService.calificar(viajeId: viajeId, puntaje: puntaje);
+      await CalificacionService.calificar(
+        viajeId: viajeId,
+        puntaje: resultado.puntaje,
+        comentario: resultado.comentario,
+      );
       setState(() => _calificados.add(viajeId));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Calificación registrada: $puntaje estrellas')),
+        SnackBar(content: Text('Calificación registrada: ${resultado.puntaje} estrellas')),
       );
     } catch (e) {
       if (!mounted) return;

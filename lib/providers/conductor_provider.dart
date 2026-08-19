@@ -91,6 +91,14 @@ class ConductorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Viaje aceptado por el cliente (llega por WebSocket): la carrera pasa a
+  /// activa al instante, sin esperar el polling de 5s.
+  void setViajeActivo(Viaje viaje) {
+    _viajeActivo = viaje;
+    _viajesDisponibles.removeWhere((v) => v.id == viaje.id);
+    notifyListeners();
+  }
+
   Future<void> actualizarUbicacion({required double lat, required double lng}) async {
     try {
       await ConductorService.actualizarUbicacion(lat: lat, lng: lng);
@@ -101,6 +109,13 @@ class ConductorProvider extends ChangeNotifier {
     final viaje = await ViajeService.aceptar(viajeId);
     _viajesDisponibles.removeWhere((v) => v.id == viaje.id);
     await refrescarSaldo();
+    notifyListeners();
+  }
+
+  /// El conductor oferta su precio sobre un viaje 'solicitado' (flujo InDrive).
+  /// NO consume saldo: se consume cuando el cliente acepta la oferta.
+  Future<void> ofertar(int viajeId, double precio) async {
+    await ViajeService.crearOferta(viajeId: viajeId, precio: precio);
     notifyListeners();
   }
 

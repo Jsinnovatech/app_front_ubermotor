@@ -15,6 +15,7 @@ class RealtimeService {
   void Function(Map<String, dynamic>)? onViajeNuevo;
   void Function(int viajeId, double lat, double lng)? onUbicacionConductor;
   void Function(int viajeId, int ofertaId, double precio)? onOfertaNueva;
+  void Function(Map<String, dynamic>)? onViajeAceptado;
   bool get conectado => _canal != null;
 
   /// Conexion del conductor: recibe carreras nuevas.
@@ -52,6 +53,9 @@ class RealtimeService {
               (datos['oferta_id'] as num?)?.toInt() ?? 0,
               (datos['precio_ofertado'] as num?)?.toDouble() ?? 0,
             );
+          } else if (datos['tipo'] == 'viaje_aceptado') {
+            // El cliente acepto la oferta del conductor: la carrera pasa a activa.
+            onViajeAceptado?.call(datos);
           }
         },
         onError: (_) => _canal = null,

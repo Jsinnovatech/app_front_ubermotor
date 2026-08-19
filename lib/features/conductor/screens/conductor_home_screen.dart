@@ -72,6 +72,28 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
       provider.agregarViajeRealtime(viaje);
       _mostrarCarreraNueva(viaje);
     };
+    // El cliente acepto la oferta: la carrera pasa a activa al instante.
+    _realtime.onViajeAceptado = (datos) {
+      if (!mounted) return;
+      if (datos['id'] == null && datos['viaje_id'] != null) {
+        datos['id'] = datos['viaje_id'];
+      }
+      if (datos['id'] == null) return;
+      final provider = context.read<ConductorProvider>();
+      final viaje = Viaje.desdeJson(datos);
+      setState(() => _carreraPendiente = null);
+      provider.setViajeActivo(viaje);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.green,
+          content: Text(
+            '¡El cliente aceptó tu oferta de S/ ${viaje.tarifa.toStringAsFixed(2)}! En camino al punto de recojo.',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      );
+    };
     _realtime.conectar();
   }
 
@@ -96,6 +118,12 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     } else {
       // Sin permiso de ubicacion: cae a ver todos (comportamiento previo).
       provider.cargarViajesDisponibles();
+    }
+    // Fallback InDrive: si el cliente acepto la oferta pero el WebSocket no
+    // llego (red fluctuante), el viaje activo se detecta igual en el siguiente
+    // ciclo y la tarjeta de la carrera aparece.
+    if (provider.viajeActivo == null) {
+      await provider.cargarViajeActivo();
     }
   }
 

@@ -91,6 +91,14 @@ class ConductorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Viaje aceptado por el cliente (llega por WebSocket): la carrera pasa a
+  /// activa al instante, sin esperar el polling de 5s.
+  void setViajeActivo(Viaje viaje) {
+    _viajeActivo = viaje;
+    _viajesDisponibles.removeWhere((v) => v.id == viaje.id);
+    notifyListeners();
+  }
+
   Future<void> actualizarUbicacion({required double lat, required double lng}) async {
     try {
       await ConductorService.actualizarUbicacion(lat: lat, lng: lng);

@@ -42,6 +42,15 @@ class _SeguimientoViajeScreenState extends State<SeguimientoViajeScreen> {
         _conductorLng = lng;
       });
     };
+    // Llegue/Completo: llega por WS al instante en vez de esperar hasta 5s
+    // del polling. Reusa _refrescarEstado() para no duplicar la logica de
+    // transicion de estado (snackbar, modal de calificacion, etc).
+    _realtime.onViajeLlegado = (_) {
+      if (mounted) _refrescarEstado();
+    };
+    _realtime.onViajeCompletado = (_) {
+      if (mounted) _refrescarEstado();
+    };
     _realtime.conectarCliente();
     _cargarRuta();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _refrescarEstado());

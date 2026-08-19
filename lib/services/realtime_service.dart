@@ -17,6 +17,8 @@ class RealtimeService {
   void Function(int viajeId, int ofertaId, double precio)? onOfertaNueva;
   void Function(Map<String, dynamic>)? onViajeAceptado;
   void Function()? onConductoresActualizados;
+  void Function(Map<String, dynamic>)? onViajeLlegado;
+  void Function(Map<String, dynamic>)? onViajeCompletado;
   bool get conectado => _canal != null;
 
   /// Conexion del conductor: recibe carreras nuevas.
@@ -61,6 +63,14 @@ class RealtimeService {
             // Un conductor se conecto/desconecto o recargo: refresca "motos
             // disponibles cerca" (lista + mapa) sin que el cliente haga nada.
             onConductoresActualizados?.call();
+          } else if (datos['tipo'] == 'viaje_llegado') {
+            onViajeLlegado?.call(datos);
+          } else if (datos['tipo'] == 'viaje_completado') {
+            onViajeCompletado?.call(datos);
+          } else if (datos['tipo'] == 'ping') {
+            // Heartbeat del backend: si no respondemos con pong, nos
+            // desconecta pensando que somos una conexion zombie.
+            _canal?.sink.add(jsonEncode({'tipo': 'pong'}));
           }
         },
         onError: (_) => _canal = null,

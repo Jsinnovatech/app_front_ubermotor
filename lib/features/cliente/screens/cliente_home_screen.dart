@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
@@ -36,7 +37,8 @@ class ClienteHomeScreen extends StatefulWidget {
   State<ClienteHomeScreen> createState() => _ClienteHomeScreenState();
 }
 
-class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
+class _ClienteHomeScreenState extends State<ClienteHomeScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController = TabController(length: 2, vsync: this);
   final _origen = TextEditingController(text: 'Mi ubicación actual');
   final _destino = TextEditingController();
   final _tarifa = TextEditingController(text: '3.00');
@@ -185,6 +187,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   @override
   void dispose() {
     _viajeTimer?.cancel();
+    _tabController.dispose();
     _origen.dispose();
     _destino.dispose();
     _tarifa.dispose();
@@ -476,7 +479,23 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
           ),
         ],
       ),
-      body: Stack(
+      body: _viajeActivo != null ? _bodyViajeActivo(context) : _bodyPedirViaje(context),
+      floatingActionButton: BotonSos(onDisparar: _dispararSos),
+      bottomNavigationBar: _BottomNavCliente(
+        onViajes: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
+        ),
+        onRanking: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const RankingScreen()),
+        ),
+        onSalir: () => context.read<AuthProvider>().cerrarSesion(),
+      ),
+    );
+  }
+
+  /// Vista normal (sin viaje activo): mapa + panel de "¿A donde vamos?".
+  Widget _bodyPedirViaje(BuildContext context) {
+    return Stack(
         children: [
           // Mapa a pantalla completa detras del sheet (estilo InDrive)
           Positioned.fill(
@@ -502,21 +521,6 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
               child: const Icon(Icons.my_location),
             ),
           ),
-          // Tarjeta del conductor cuando acepto la carrera (parte de abajo)
-          if (_viajeActivo != null)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 12,
-              child: _TarjetaConductorActivo(
-                viaje: _viajeActivo!,
-                // Abre la pantalla completa de seguimiento (mapa, ruta,
-                // tracking en vivo del conductor) al tocar la tarjeta.
-                onVerRuta: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => SeguimientoViajeScreen(viaje: _viajeActivo!)),
-                ),
-              ),
-            ),
           // Panel deslizante: tarjeta 35% <-> pantalla completa 85% (snap)
           DraggableScrollableSheet(
             controller: _sheetController,
@@ -763,19 +767,160 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
             },
           ),
         ],
-      ),
-      floatingActionButton: BotonSos(onDisparar: _dispararSos),
-      bottomNavigationBar: _BottomNavCliente(
-        onViajes: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const HistorialClienteScreen()),
+      );
+  }
+
+  /// Vista con viaje activo: TabBar "Motos cerca" / "Mi conductor". Aparece
+  /// solo cuando el cliente ya tiene una carrera asignada/en curso.
+  Widget _bodyViajeActivo(BuildContext context) {
+    return Column(
+      children: [
+        Material(
+          color: AppColors.white,
+          child: TabBar(
+            controller: _tabController,
+            labelColor: AppColors.black,
+            unselectedLabelColor: AppColors.textDim,
+            indicatorColor: AppColors.yellow,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            tabs: const [
+              Tab(text: 'Motos cerca'),
+              Tab(text: 'Mi conductor'),
+            ],
+          ),
         ),
-        onRanking: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const RankingScreen()),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _tabMotosCerca(context),
+              _tabMiConductor(context),
+            ],
+          ),
         ),
-        onSalir: () => context.read<AuthProvider>().cerrarSesion(),
-      ),
+      ],
     );
   }
+
+  /// Tab "Motos cerca": mismo mapa con las motos disponibles alrededor,
+  /// util para comparar mientras el viaje ya esta en marcha.
+  Widget _tabMotosCerca(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: _MapaUbicacion(
+            lat: _miLat,
+            lng: _miLng,
+            ubicacionCargada: _ubicacionCargada,
+            centrarKey: _centrarKey,
+            conductoresCerca: context.watch<ClienteProvider>().conductores,
+          ),
+        ),
+        Positioned(
+          right: 16,
+          top: 16,
+          child: FloatingActionButton.small(
+            heroTag: 'btn_ubicacion_motos',
+            backgroundColor: AppColors.white,
+            foregroundColor: AppColors.blue,
+            onPressed: _centrarEnMiUbicacion,
+            child: const Icon(Icons.my_location),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: _MotosCerca(
+            conductores: context.watch<ClienteProvider>().conductores,
+            onConductorTap: (c) => showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: AppColors.white,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              builder: (_) => DetalleConductorSheet(conductor: c),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Tab "Mi conductor": mapa centrado en el conductor asignado (tracking
+  /// en vivo por WebSocket) + tarjeta con la distancia al punto de recojo.
+  Widget _tabMiConductor(BuildContext context) {
+    final viaje = _viajeActivo!;
+    final distanciaKm = _distanciaConductorKm();
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: _MapaUbicacion(
+            lat: _miLat,
+            lng: _miLng,
+            ubicacionCargada: _ubicacionCargada,
+            conductorLat: _conductorLat,
+            conductorLng: _conductorLng,
+            centrarKey: _centrarKey,
+          ),
+        ),
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: 16,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (distanciaKm != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.black,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.route, size: 16, color: AppColors.yellow),
+                      const SizedBox(width: 6),
+                      Text(
+                        distanciaKm < 1
+                            ? '${(distanciaKm * 1000).round()} m para llegar a tu punto'
+                            : '${distanciaKm.toStringAsFixed(1)} km para llegar a tu punto',
+                        style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w800, fontSize: 12.5),
+                      ),
+                    ],
+                  ),
+                ),
+              _TarjetaConductorActivo(
+                viaje: viaje,
+                onVerRuta: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => SeguimientoViajeScreen(viaje: viaje)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Distancia en km del conductor (posicion en vivo por WS) al punto de
+  /// recojo del viaje activo. null si aun no llego la primera ubicacion.
+  double? _distanciaConductorKm() {
+    if (_conductorLat == null || _conductorLng == null || _viajeActivo == null) return null;
+    const radioTierraKm = 6371.0;
+    final dLat = _gradosARadianes(_viajeActivo!.origenLat - _conductorLat!);
+    final dLng = _gradosARadianes(_viajeActivo!.origenLng - _conductorLng!);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_gradosARadianes(_conductorLat!)) * cos(_gradosARadianes(_viajeActivo!.origenLat)) * sin(dLng / 2) * sin(dLng / 2);
+    final c = 2 * asin(sqrt(a));
+    return radioTierraKm * c;
+  }
+
+  double _gradosARadianes(double grados) => grados * (3.141592653589793 / 180);
 
   /// Tarjeta de metrica del Home del cliente.
   Widget _metrica({
@@ -1132,7 +1277,14 @@ class _MapaUbicacionState extends State<_MapaUbicacion> {
           point: LatLng(c.ubicacionLat, c.ubicacionLng),
           width: 38,
           height: 38,
-          child: const Icon(Icons.electric_rickshaw, color: AppColors.yellow, size: 38),
+          child: Container(
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.white,
+              border: Border.fromBorderSide(BorderSide(color: AppColors.black, width: 2)),
+            ),
+            child: const Icon(Icons.electric_rickshaw, color: AppColors.black, size: 24),
+          ),
         ),
       );
     }

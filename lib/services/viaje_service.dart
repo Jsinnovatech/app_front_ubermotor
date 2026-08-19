@@ -100,4 +100,15 @@ class ViajeService {
         .map((p) => {'lat': (p['lat'] as num).toDouble(), 'lng': (p['lng'] as num).toDouble()})
         .toList();
   }
+
+  /// Ruta real por calles desde la posicion EN VIVO del conductor hasta el
+  /// punto de recojo. Se recalcula en cada llamada (el conductor se mueve).
+  /// Vacia si el viaje ya no esta 'asignado'/'llegado'.
+  static Future<List<Map<String, double>>> rutaConductor(int viajeId) async {
+    final data = await ApiClient.get('${ApiConfig.baseUrl}/api/v1/viajes/$viajeId/ruta-conductor');
+    final puntos = (data as Map)['puntos'] as List? ?? [];
+    return puntos
+        .map((p) => {'lat': (p['lat'] as num).toDouble(), 'lng': (p['lng'] as num).toDouble()})
+        .toList();
+  }
 }

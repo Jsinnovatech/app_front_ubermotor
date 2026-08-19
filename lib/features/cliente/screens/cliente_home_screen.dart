@@ -16,6 +16,7 @@ import '../../../services/geocoding_service.dart';
 import '../../../services/realtime_service.dart';
 import '../../../services/sos_service.dart';
 import '../../../services/ubicacion_service.dart';
+import '../../../services/viaje_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
 import '../widgets/modal_propuestas.dart';
 import 'historial_cliente_screen.dart';
@@ -68,6 +69,9 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> with SingleTicker
   // en la parte de abajo (además del push).
   Viaje? _viajeActivo;
   Timer? _viajeTimer;
+  // Ruta real por calles desde la posicion en vivo del conductor hasta el
+  // punto de recojo (se recalcula cada vez que llega una ubicacion nueva).
+  List<LatLng> _rutaConductor = [];
 
   @override
   void initState() {
@@ -108,9 +112,37 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> with SingleTicker
       try {
         final viaje = await ClienteService.viajeActivo();
         if (!mounted) return;
-        setState(() => _viajeActivo = viaje);
+        _actualizarViajeActivo(viaje);
       } catch (_) {}
     });
+  }
+
+  /// Actualiza [_viajeActivo] y, si recien se asigno un conductor (transicion
+  /// null -> con viaje), salta automaticamente a la pestaña "Mi conductor"
+  /// para que el cliente vea el seguimiento sin tener que buscarlo.
+  void _actualizarViajeActivo(Viaje? nuevo) {
+    final teniaViajeAntes = _viajeActivo != null;
+    setState(() => _viajeActivo = nuevo);
+    if (!teniaViajeAntes && nuevo != null) {
+      _tabController.animateTo(1);
+      _cargarRutaConductor();
+    } else if (teniaViajeAntes && nuevo == null) {
+      _rutaConductor = [];
+    }
+  }
+
+  /// Pide a OSRM la ruta real por calles desde donde esta el conductor AHORA
+  /// hasta el punto de recojo. Se llama cada vez que llega una ubicacion
+  /// nueva por WebSocket, asi la linea del mapa sigue el movimiento real.
+  Future<void> _cargarRutaConductor() async {
+    if (_viajeActivo == null) return;
+    try {
+      final puntos = await ViajeService.rutaConductor(_viajeActivo!.id);
+      if (!mounted) return;
+      setState(() {
+        _rutaConductor = puntos.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
+      });
+    } catch (_) {}
   }
 
   /// Cuando el usuario escribe el monto a mano, actualiza _tarifaValor.
@@ -205,6 +237,8 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> with SingleTicker
         _conductorLat = lat;
         _conductorLng = lng;
       });
+      // El conductor se movio: recalcula la traza real hacia el recojo.
+      _cargarRutaConductor();
     };
     // Otro conductor se conecto/desconecto o recargo: refresca la lista y
     // los pines del mapa al instante (patron InDrive, sin polling manual).
@@ -409,7 +443,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> with SingleTicker
       );
       if (!mounted) return;
       if (viaje != null) {
-        setState(() => _viajeActivo = viaje);
+        _actualizarViajeActivo(viaje);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             backgroundColor: AppColors.black,
@@ -870,6 +904,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> with SingleTicker
             conductorLat: _conductorLat,
             conductorLng: _conductorLng,
             centrarKey: _centrarKey,
+            rutaConductor: _rutaConductor,
           ),
         ),
         Positioned(
@@ -1237,6 +1272,18 @@ class _TarjetaMoto extends StatelessWidget {
   }
 }
 
+/// Interpola linealmente entre dos coordenadas: permite animar el pin del
+/// conductor deslizandose en vez de saltar de golpe en cada ubicacion nueva.
+class LatLngTween extends Tween<LatLng> {
+  LatLngTween({required LatLng super.begin, required LatLng super.end});
+
+  @override
+  LatLng lerp(double t) => LatLng(
+        begin!.latitude + (end!.latitude - begin!.latitude) * t,
+        begin!.longitude + (end!.longitude - begin!.longitude) * t,
+      );
+}
+
 /// Mapa de la ubicacion actual del cliente para reconfirmarla antes de pedir
 /// el viaje (OpenStreetMap, sin API key). Pin azul en la posicion actual.
 /// Si hay un conductor asignado, se muestra su pin (moto) moviendose en vivo.
@@ -1251,6 +1298,9 @@ class _MapaUbicacion extends StatefulWidget {
   // de en la lista de tarjetas debajo. Se actualiza por REST al cargar la
   // ubicacion y en vivo por WebSocket (onConductoresActualizados).
   final List<ConductorDisponible> conductoresCerca;
+  // Traza real por calles (OSRM) desde el conductor hasta el punto de
+  // recojo, recalculada mientras se mueve (ver _cargarRutaConductor).
+  final List<LatLng> rutaConductor;
 
   const _MapaUbicacion({
     required this.lat,
@@ -1260,14 +1310,36 @@ class _MapaUbicacion extends StatefulWidget {
     this.conductorLng,
     this.centrarKey = 0,
     this.conductoresCerca = const [],
+    this.rutaConductor = const [],
   });
 
   @override
   State<_MapaUbicacion> createState() => _MapaUbicacionState();
 }
 
-class _MapaUbicacionState extends State<_MapaUbicacion> {
+class _MapaUbicacionState extends State<_MapaUbicacion> with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
+  // El GPS del conductor llega cada ~5s (timer fijo del lado conductor); en
+  // vez de que el pin salte de golpe, se desliza suave hacia la nueva
+  // posicion. La animacion dura un poco menos que el intervalo del GPS para
+  // terminar justo antes de que llegue la siguiente ubicacion.
+  late final AnimationController _conductorAnimController = AnimationController(
+    duration: const Duration(milliseconds: 4500),
+    vsync: this,
+  );
+  Animation<LatLng>? _conductorAnim;
+  LatLng? _conductorPosActual;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.conductorLat != null && widget.conductorLng != null) {
+      _conductorPosActual = LatLng(widget.conductorLat!, widget.conductorLng!);
+    }
+    _conductorAnimController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void didUpdateWidget(covariant _MapaUbicacion oldWidget) {
@@ -1279,6 +1351,25 @@ class _MapaUbicacionState extends State<_MapaUbicacion> {
         _mapController.move(LatLng(widget.lat, widget.lng), 16);
       });
     }
+    _actualizarAnimacionConductor();
+  }
+
+  void _actualizarAnimacionConductor() {
+    if (widget.conductorLat == null || widget.conductorLng == null) return;
+    final destino = LatLng(widget.conductorLat!, widget.conductorLng!);
+    final origen = _conductorPosActual;
+    _conductorPosActual = destino;
+    if (origen == null || origen == destino) return;
+    _conductorAnim = LatLngTween(begin: origen, end: destino).animate(
+      CurvedAnimation(parent: _conductorAnimController, curve: Curves.linear),
+    );
+    _conductorAnimController.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _conductorAnimController.dispose();
+    super.dispose();
   }
 
   @override
@@ -1325,11 +1416,15 @@ class _MapaUbicacionState extends State<_MapaUbicacion> {
         ),
       );
     }
-    // Pin del conductor en vivo (tracking del viaje ya asignado)
+    // Pin del conductor en vivo (tracking del viaje ya asignado). Usa la
+    // posicion ANIMADA (se desliza) en vez del salto directo del GPS.
     if (widget.conductorLat != null && widget.conductorLng != null) {
+      final puntoConductor = _conductorAnim?.value ??
+          _conductorPosActual ??
+          LatLng(widget.conductorLat!, widget.conductorLng!);
       marcadores.add(
         Marker(
-          point: LatLng(widget.conductorLat!, widget.conductorLng!),
+          point: puntoConductor,
           width: 44,
           height: 44,
           child: const Icon(Icons.electric_rickshaw, color: AppColors.green, size: 44),
@@ -1368,6 +1463,14 @@ class _MapaUbicacionState extends State<_MapaUbicacion> {
                   ),
                 ],
               ),
+              // Traza real por calles (OSRM) del conductor hacia el punto de
+              // recojo, recalculada mientras se mueve.
+              if (widget.rutaConductor.length > 1)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(points: widget.rutaConductor, color: AppColors.blue, strokeWidth: 4),
+                  ],
+                ),
               MarkerLayer(markers: marcadores),
             ],
           ),

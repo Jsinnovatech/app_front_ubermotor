@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/boton_sos.dart';
 import '../../../core/widgets/dialogo_calificacion.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/conductor_provider.dart';
@@ -358,9 +357,6 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
             ),
         ],
       ),
-      floatingActionButton: BotonSos(
-        onDisparar: _dispararSos,
-      ),
       bottomNavigationBar: _BottomNav(provider: provider),
     );
   }
@@ -431,6 +427,15 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
                   Navigator.of(ctx).pop();
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PerfilScreen()));
                 }),
+                ListTile(
+                  leading: const Icon(Icons.sos, color: AppColors.red),
+                  title: const Text('SOS — Emergencia', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.red)),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.textDim),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _confirmarSos();
+                  },
+                ),
                 _opcionMenu(Icons.logout, 'Cerrar sesión', () {
                   Navigator.of(ctx).pop();
                   context.read<AuthProvider>().cerrarSesion();
@@ -547,6 +552,28 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
     try {
       await context.read<ConductorProvider>().rechazar(viaje.id);
     } catch (_) {}
+  }
+
+  /// Confirma antes de disparar la alerta (evita SOS por toque accidental).
+  Future<void> _confirmarSos() async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Activar alerta SOS?', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.red)),
+        content: const Text('Se notificará tu ubicación a Serenazgo/Policía de inmediato.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, activar SOS', style: TextStyle(color: AppColors.red, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (confirmado == true) _dispararSos();
   }
 
   Future<void> _dispararSos() async {

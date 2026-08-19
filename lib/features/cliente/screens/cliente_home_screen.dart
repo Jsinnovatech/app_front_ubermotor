@@ -19,6 +19,7 @@ import '../../../services/ubicacion_service.dart';
 import '../widgets/detalle_conductor_sheet.dart';
 import '../widgets/modal_propuestas.dart';
 import 'historial_cliente_screen.dart';
+import 'seguimiento_viaje_screen.dart';
 import '../../ranking/screens/ranking_screen.dart';
 
 /// Home del cliente replicado del diseno de Stitch (MotoRide):
@@ -509,7 +510,11 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
               bottom: 12,
               child: _TarjetaConductorActivo(
                 viaje: _viajeActivo!,
-                onVerRuta: () => _centrarEnMiUbicacion(),
+                // Abre la pantalla completa de seguimiento (mapa, ruta,
+                // tracking en vivo del conductor) al tocar la tarjeta.
+                onVerRuta: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => SeguimientoViajeScreen(viaje: _viajeActivo!)),
+                ),
               ),
             ),
           // Panel deslizante: tarjeta 35% <-> pantalla completa 85% (snap)
@@ -1287,7 +1292,9 @@ class _TarjetaConductorActivo extends StatelessWidget {
       _ => ('Carrera en curso', AppColors.black, Icons.two_wheeler),
     };
 
-    return Container(
+    return GestureDetector(
+      onTap: onVerRuta,
+      child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -1352,6 +1359,7 @@ class _TarjetaConductorActivo extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
